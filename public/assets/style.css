@@ -1,0 +1,77 @@
+:root {
+  --teal-dark: #0f5e56;
+  --teal: #14867a;
+  --teal-light: #e8f5f3;
+}
+body { background-color: #f4f7f6; font-family: 'Segoe UI', system-ui, sans-serif; }
+.app-navbar { background: linear-gradient(90deg, var(--teal-dark), var(--teal)); }
+.btn-teal { background-color: var(--teal); border-color: var(--teal); color: #fff; }
+.btn-teal:hover, .btn-teal:focus { background-color: var(--teal-dark); border-color: var(--teal-dark); color: #fff; }
+.btn-outline-teal { border: 1px solid var(--teal); color: var(--teal); background: #fff; }
+.btn-check:checked + .btn-outline-teal, .btn-outline-teal:hover { background-color: var(--teal); border-color: var(--teal); color: #fff; }
+.text-teal { color: var(--teal); }
+.card { border-radius: 12px; }
+.stat-card { border-left: 4px solid var(--teal); }
+.login-body { min-height: 100vh; background: linear-gradient(135deg, var(--teal-dark), var(--teal)); }
+.login-card { border-radius: 16px; }
+.table thead th { font-weight: 600; font-size: .82rem; text-transform: uppercase; letter-spacing: .03em; color: #5b6b69; border-bottom-width: 1px; }
+.navbar-nav .nav-link { color: rgba(255,255,255,.9) !important; }
+.navbar-nav .nav-link:hover { color: #fff !important; }
+.badge.bg-secondary { background-color: var(--teal) !important; }
+a { color: var(--teal-dark); }
+a:hover { color: var(--teal); }
+
+/* ============ Responsif: tabel jadi kartu di layar kecil (HP/tablet) ============ */
+@media (max-width: 767.98px) {
+  .table-mobile-cards thead { display: none; }
+  .table-mobile-cards, .table-mobile-cards tbody, .table-mobile-cards tr, .table-mobile-cards td {
+    display: block; width: 100%;
+  }
+  .table-mobile-cards tr {
+    background: #fff;
+    border: 1px solid #e5e9e8;
+    border-radius: 10px;
+    margin-bottom: .75rem;
+    padding: .5rem .75rem;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  }
+  .table-mobile-cards td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .75rem;
+    text-align: right;
+    border: none !important;
+    padding: .4rem 0;
+    border-bottom: 1px solid #f1f3f2 !important;
+  }
+  .table-mobile-cards td:last-child { border-bottom: none !important; }
+  .table-mobile-cards td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+    color: #5b6b69;
+    text-align: left;
+    flex-shrink: 0;
+  }
+  .table-mobile-cards td.td-action { justify-content: flex-end; }
+  .table-mobile-cards td.td-action::before { display: none; }
+
+  .container { padding-left: .85rem; padding-right: .85rem; }
+  .card-body { padding: 1rem; }
+  h4.fw-semibold { font-size: 1.15rem; }
+  .btn { font-size: .92rem; }
+}
+
+@media (max-width: 575.98px) {
+  .stat-card .fs-3 { font-size: 1.4rem !important; }
+}
+
+/* Input dengan satuan (misalnya "kg", "m2", "orang") */
+.input-group-unit { min-width: 3.5rem; justify-content: center; background: var(--teal-light); color: var(--teal-dark); font-weight: 600; font-size: .85rem; }
+
+/* Banner draft */
+.draft-banner:empty { display: none; }
+.draft-status { font-size: .8rem; color: #6c757d; }
