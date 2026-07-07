@@ -4,11 +4,13 @@ requireRole(['ketua_rt','operator_kelurahan','admin_kelurahan']);
 $pageTitle = 'Impor Data Keluarga dari Excel';
 
 $COL = [
-    'nomor_kk' => 0, 'nama_kk' => 1, 'rt' => 2, 'alamat' => 3,
-    'jumlah_lk' => 4, 'jumlah_pr' => 5,
-    'nik' => 6, 'jenis_kelamin' => 7, 'tanggal_lahir' => 8, 'agama' => 9,
-    'status_perkawinan' => 10, 'pendidikan' => 11, 'status_pekerjaan' => 12, 'pekerjaan' => 13,
-    'pernah_bantuan' => 14, 'ada_umkm' => 15, 'jumlah_anggota_umkm' => 16,
+    'nomor_kk' => 0, 'nama_kk' => 1, 'rt' => 2, 'alamat' => 3, 'status_keberadaan' => 4,
+    'jumlah_lk' => 5, 'jumlah_pr' => 6,
+    'nik' => 7, 'jenis_kelamin' => 8, 'tanggal_lahir' => 9, 'agama' => 10,
+    'status_perkawinan' => 11, 'pendidikan' => 12, 'status_pekerjaan' => 13, 'pekerjaan' => 14,
+    'pernah_bantuan' => 15, 'deskripsi_bantuan' => 16,
+    'ada_umkm' => 17, 'jumlah_anggota_umkm' => 18,
+    'ada_disabilitas' => 19, 'jumlah_disabilitas' => 20, 'jenis_disabilitas' => 21,
 ];
 
 $rtList = $pdo->query("SELECT * FROM rt ORDER BY nomor_rt")->fetchAll();
@@ -73,6 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file_excel'])) {
         $errorsRow = [];
         $rtNomor = str_pad(xlsxCell($r, $COL['rt']), 3, '0', STR_PAD_LEFT);
         $alamat = xlsxCell($r, $COL['alamat']);
+        $statusKeberadaan = xlsxCell($r, $COL['status_keberadaan']) ?: 'Ada';
         $jumlahLk = xlsxCell($r, $COL['jumlah_lk']);
         $jumlahPr = xlsxCell($r, $COL['jumlah_pr']);
         $nik = xlsxCell($r, $COL['nik']);
@@ -84,14 +87,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file_excel'])) {
         $statusPekerjaan = xlsxCell($r, $COL['status_pekerjaan']);
         $pekerjaan = xlsxCell($r, $COL['pekerjaan']);
         $pernahBantuan = xlsxCell($r, $COL['pernah_bantuan']) ?: 'Tidak';
+        $deskripsiBantuan = xlsxCell($r, $COL['deskripsi_bantuan']);
         $adaUmkm = xlsxCell($r, $COL['ada_umkm']) ?: 'Tidak';
         $jumlahUmkm = xlsxCell($r, $COL['jumlah_anggota_umkm']);
+        $adaDisabilitas = xlsxCell($r, $COL['ada_disabilitas']) ?: 'Tidak';
+        $jumlahDisabilitas = xlsxCell($r, $COL['jumlah_disabilitas']);
+        $jenisDisabilitas = xlsxCell($r, $COL['jenis_disabilitas']);
 
         $prefix = "Baris $rn: ";
         if (!preg_match('/^\d{16}$/', $nomorKk)) $errorsRow[] = $prefix . 'Nomor KK harus 16 digit angka.';
         if ($namaKk === '') $errorsRow[] = $prefix . 'Nama Kepala Keluarga kosong.';
         if (!isset($rtByNomor[$rtNomor])) $errorsRow[] = $prefix . "RT '$rtNomor' tidak ditemukan di sistem.";
         if ($alamat === '') $errorsRow[] = $prefix . 'Alamat kosong.';
+        if (!in_array($statusKeberadaan, ['Ada','Pindah'])) $errorsRow[] = $prefix . 'Status Keberadaan Keluarga harus "Ada" atau "Pindah".';
         if (!is_numeric($jumlahLk) || (int)$jumlahLk < 0) $errorsRow[] = $prefix . 'Jumlah Laki-laki tidak valid.';
         if (!is_numeric($jumlahPr) || (int)$jumlahPr < 0) $errorsRow[] = $prefix . 'Jumlah Perempuan tidak valid.';
         if (((int)$jumlahLk + (int)$jumlahPr) < 1) $errorsRow[] = $prefix . 'Total anggota (laki-laki + perempuan) minimal 1.';
@@ -105,8 +113,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file_excel'])) {
         }
         if (!butuhDeskripsiPekerjaan($statusPekerjaan)) $pekerjaan = '';
         if (!in_array($pernahBantuan, ['Ya','Tidak'])) $errorsRow[] = $prefix . 'Pernah Terima Bantuan harus "Ya" atau "Tidak".';
+        if ($pernahBantuan === 'Ya' && $deskripsiBantuan === '') $errorsRow[] = $prefix . 'Deskripsi Bantuan wajib diisi jika Pernah Terima Bantuan = Ya.';
+        if ($pernahBantuan !== 'Ya') $deskripsiBantuan = '';
         if (!in_array($adaUmkm, ['Ya','Tidak'])) $errorsRow[] = $prefix . 'Ada UMKM harus "Ya" atau "Tidak".';
         if ($adaUmkm === 'Ya' && (!is_numeric($jumlahUmkm) || (int)$jumlahUmkm < 1)) $errorsRow[] = $prefix . 'Jumlah Anggota UMKM wajib diisi (minimal 1) jika Ada UMKM = Ya.';
+        if (!in_array($adaDisabilitas, ['Ya','Tidak'])) $errorsRow[] = $prefix . 'Ada Penyandang Disabilitas harus "Ya" atau "Tidak".';
+        if ($adaDisabilitas === 'Ya') {
+            if (!is_numeric($jumlahDisabilitas) || (int)$jumlahDisabilitas < 1) $errorsRow[] = $prefix . 'Jumlah Penyandang Disabilitas wajib diisi (minimal 1) jika Ya.';
+            if ($jenisDisabilitas === '') $errorsRow[] = $prefix . 'Jenis Disabilitas wajib diisi jika Ya.';
+        } else {
+            $jumlahDisabilitas = '';
+            $jenisDisabilitas = '';
+        }
 
         // Ketua RT hanya boleh impor untuk RT-nya sendiri
         if (hasRole('ketua_rt') && isset($rtByNomor[$rtNomor]) && (int)$rtByNomor[$rtNomor] !== (int)currentUser()['rt_id']) {
@@ -137,17 +155,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file_excel'])) {
 
         try {
             $stmt = $pdo->prepare("INSERT INTO keluarga
-                (nama_kepala_keluarga, alamat, rt_id, nomor_kk, jumlah_lk, jumlah_pr, jumlah_total,
+                (nama_kepala_keluarga, alamat, rt_id, nomor_kk, status_keberadaan, jumlah_lk, jumlah_pr, jumlah_total,
                  nik_kepala_keluarga, jenis_kelamin_kepala_keluarga, tanggal_lahir_kepala_keluarga,
                  agama_kepala_keluarga, status_perkawinan_kepala_keluarga, pendidikan_kepala_keluarga,
                  status_pekerjaan_kepala_keluarga, pekerjaan_kepala_keluarga,
-                 pernah_bantuan, ada_umkm, jumlah_anggota_umkm, created_by, updated_by)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+                 pernah_bantuan, deskripsi_bantuan, ada_umkm, jumlah_anggota_umkm,
+                 ada_disabilitas, jumlah_disabilitas, jenis_disabilitas, created_by, updated_by)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
             $stmt->execute([
-                $namaKk, $alamat, $rtByNomor[$rtNomor], $nomorKk, (int)$jumlahLk, (int)$jumlahPr, (int)$jumlahLk + (int)$jumlahPr,
+                $namaKk, $alamat, $rtByNomor[$rtNomor], $nomorKk, $statusKeberadaan, (int)$jumlahLk, (int)$jumlahPr, (int)$jumlahLk + (int)$jumlahPr,
                 $nik, $jk, tanggalKeSql($tglLahir), $agama ?: null, $statusKawin ?: null, $pendidikan ?: null,
                 $statusPekerjaan, $pekerjaan ?: null,
-                $pernahBantuan, $adaUmkm, $adaUmkm === 'Ya' ? (int)$jumlahUmkm : null,
+                $pernahBantuan, $deskripsiBantuan ?: null, $adaUmkm, $adaUmkm === 'Ya' ? (int)$jumlahUmkm : null,
+                $adaDisabilitas, $adaDisabilitas === 'Ya' ? (int)$jumlahDisabilitas : null, $jenisDisabilitas ?: null,
                 currentUser()['id'], currentUser()['id'],
             ]);
             $jmlBerhasil++;

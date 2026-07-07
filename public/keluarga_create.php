@@ -15,6 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $jumlah_lk = (int)($_POST['jumlah_lk'] ?? 0);
     $jumlah_pr = (int)($_POST['jumlah_pr'] ?? 0);
     $jumlah_total = $jumlah_lk + $jumlah_pr;
+    $status_keberadaan = ($_POST['status_keberadaan'] ?? 'Ada') === 'Pindah' ? 'Pindah' : 'Ada';
 
     $nik = trim($_POST['nik_kepala_keluarga'] ?? '');
     $jk = $_POST['jenis_kelamin_kepala_keluarga'] ?? '';
@@ -26,8 +27,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pekerjaan = trim($_POST['pekerjaan_kepala_keluarga'] ?? '');
 
     $pernah_bantuan = ($_POST['pernah_bantuan'] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak';
+    $deskripsi_bantuan = trim($_POST['deskripsi_bantuan'] ?? '');
     $ada_umkm = ($_POST['ada_umkm'] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak';
     $jumlah_anggota_umkm = $ada_umkm === 'Ya' ? (int)($_POST['jumlah_anggota_umkm'] ?? 0) : null;
+    $ada_disabilitas = ($_POST['ada_disabilitas'] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak';
+    $jumlah_disabilitas = $ada_disabilitas === 'Ya' ? (int)($_POST['jumlah_disabilitas'] ?? 0) : null;
+    $jenis_disabilitas = $ada_disabilitas === 'Ya' ? trim($_POST['jenis_disabilitas'] ?? '') : null;
 
     if ($nama === '') $errors[] = 'Nama kepala keluarga wajib diisi.';
     if ($alamat === '') $errors[] = 'Alamat wajib diisi.';
@@ -46,6 +51,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if (!butuhDeskripsiPekerjaan($status_pekerjaan)) $pekerjaan = null;
     if ($ada_umkm === 'Ya' && $jumlah_anggota_umkm < 1) $errors[] = 'Jumlah anggota keluarga pemilik UMKM wajib diisi (minimal 1) jika ada UMKM.';
+    if ($pernah_bantuan === 'Ya' && $deskripsi_bantuan === '') $errors[] = 'Deskripsi bantuan wajib diisi jika keluarga pernah menerima bantuan.';
+    if ($pernah_bantuan !== 'Ya') $deskripsi_bantuan = null; else $deskripsi_bantuan = $deskripsi_bantuan ?: null;
+    if ($ada_disabilitas === 'Ya') {
+        if ($jumlah_disabilitas < 1) $errors[] = 'Jumlah anggota keluarga penyandang disabilitas wajib diisi (minimal 1).';
+        if ($jenis_disabilitas === '') $errors[] = 'Jenis disabilitas wajib diisi.';
+    }
 
     if (empty($errors)) {
         $check = $pdo->prepare("SELECT id FROM keluarga WHERE nomor_kk = ?");
@@ -63,13 +74,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
              nik_kepala_keluarga, jenis_kelamin_kepala_keluarga, tanggal_lahir_kepala_keluarga,
              agama_kepala_keluarga, status_perkawinan_kepala_keluarga, pendidikan_kepala_keluarga,
              status_pekerjaan_kepala_keluarga, pekerjaan_kepala_keluarga,
-             pernah_bantuan, ada_umkm, jumlah_anggota_umkm, created_by, updated_by)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+             pernah_bantuan, deskripsi_bantuan, ada_umkm, jumlah_anggota_umkm,
+             ada_disabilitas, jumlah_disabilitas, jenis_disabilitas,
+             status_keberadaan, created_by, updated_by)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
         $stmt->execute([
             $nama, $alamat, $rt_id, $nomor_kk, $jumlah_lk, $jumlah_pr, $jumlah_total,
             $nik, $jk, $tgl, $agama, $status_kawin, $pendidikan,
             $status_pekerjaan, $pekerjaan,
-            $pernah_bantuan, $ada_umkm, $jumlah_anggota_umkm, currentUser()['id'], currentUser()['id'],
+            $pernah_bantuan, $deskripsi_bantuan, $ada_umkm, $jumlah_anggota_umkm,
+            $ada_disabilitas, $jumlah_disabilitas, $jenis_disabilitas,
+            $status_keberadaan, currentUser()['id'], currentUser()['id'],
         ]);
         $keluargaId = $pdo->lastInsertId();
         saveCustomFieldValues($pdo, 'keluarga', $keluargaId, $_POST);
@@ -129,6 +144,16 @@ require __DIR__ . '/../includes/partials_header.php';
           <label class="form-label">Total Anggota</label>
           <input type="text" id="jumlahTotal" class="form-control" value="0" disabled>
           <div class="form-text">Dihitung otomatis</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label d-block">Status Keberadaan Keluarga<?= requiredMark() ?></label>
+          <div class="btn-group" role="group">
+            <input type="radio" class="btn-check" name="status_keberadaan" id="keberadaanAda" value="Ada" <?= (($_POST['status_keberadaan'] ?? 'Ada')=='Ada')?'checked':'' ?>>
+            <label class="btn btn-outline-teal" for="keberadaanAda">Ada</label>
+            <input type="radio" class="btn-check" name="status_keberadaan" id="keberadaanPindah" value="Pindah" <?= (($_POST['status_keberadaan'] ?? 'Ada')=='Pindah')?'checked':'' ?>>
+            <label class="btn btn-outline-teal" for="keberadaanPindah">Pindah</label>
+          </div>
+          <div class="form-text">"Pindah" berarti keluarga ini sudah tidak berdomisili di alamat tersebut.</div>
         </div>
 
         <?php if ($customFields): ?>
@@ -223,11 +248,11 @@ require __DIR__ . '/../includes/partials_header.php';
   </div>
 
   <div class="card border-0 shadow-sm mb-3">
-    <div class="card-header bg-white fw-semibold"><i class="bi bi-hand-holding-heart"></i> Bantuan &amp; UMKM</div>
+    <div class="card-header bg-white fw-semibold"><i class="bi bi-hand-holding-heart"></i> Bantuan, UMKM &amp; Disabilitas</div>
     <div class="card-body">
       <div class="row g-3">
-        <div class="col-md-6">
-          <label class="form-label d-block">Apakah keluarga ini pernah menerima bantuan dari pemerintah?<?= requiredMark() ?></label>
+        <div class="col-md-4">
+          <label class="form-label d-block">Pernah menerima bantuan dari pemerintah?<?= requiredMark() ?></label>
           <div class="btn-group" role="group">
             <input type="radio" class="btn-check" name="pernah_bantuan" id="bantuanYa" value="Ya" <?= (($_POST['pernah_bantuan'] ?? 'Tidak')=='Ya')?'checked':'' ?>>
             <label class="btn btn-outline-teal" for="bantuanYa">Ya</label>
@@ -235,8 +260,13 @@ require __DIR__ . '/../includes/partials_header.php';
             <label class="btn btn-outline-teal" for="bantuanTidak">Tidak</label>
           </div>
         </div>
-        <div class="col-md-6">
-          <label class="form-label d-block">Apakah ada anggota keluarga yang memiliki UMKM?<?= requiredMark() ?></label>
+        <div class="col-md-8" id="wrapDeskripsiBantuan">
+          <label class="form-label">Deskripsi Bantuan<span id="markDeskripsiBantuan"></span></label>
+          <input type="text" name="deskripsi_bantuan" id="inputDeskripsiBantuan" class="form-control" placeholder="contoh: Bantuan Langsung Tunai (BLT), PKH, Sembako" value="<?= e($_POST['deskripsi_bantuan'] ?? '') ?>">
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label d-block">Ada anggota keluarga yang memiliki UMKM?<?= requiredMark() ?></label>
           <div class="btn-group" role="group">
             <input type="radio" class="btn-check" name="ada_umkm" id="umkmYa" value="Ya" <?= (($_POST['ada_umkm'] ?? 'Tidak')=='Ya')?'checked':'' ?>>
             <label class="btn btn-outline-teal" for="umkmYa">Ya</label>
@@ -247,6 +277,25 @@ require __DIR__ . '/../includes/partials_header.php';
         <div class="col-md-4" id="wrapJumlahUmkm">
           <label class="form-label">Berapa Anggota Keluarga yang Memiliki UMKM?<span id="markJumlahUmkm"></span></label>
           <input type="number" min="1" name="jumlah_anggota_umkm" id="inputJumlahUmkm" class="form-control" value="<?= e($_POST['jumlah_anggota_umkm'] ?? '') ?>">
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label d-block">Ada anggota keluarga penyandang disabilitas?<?= requiredMark() ?></label>
+          <div class="btn-group" role="group">
+            <input type="radio" class="btn-check" name="ada_disabilitas" id="disabilitasYa" value="Ya" <?= (($_POST['ada_disabilitas'] ?? 'Tidak')=='Ya')?'checked':'' ?>>
+            <label class="btn btn-outline-teal" for="disabilitasYa">Ya</label>
+            <input type="radio" class="btn-check" name="ada_disabilitas" id="disabilitasTidak" value="Tidak" <?= (($_POST['ada_disabilitas'] ?? 'Tidak')=='Tidak')?'checked':'' ?>>
+            <label class="btn btn-outline-teal" for="disabilitasTidak">Tidak</label>
+          </div>
+          <div class="form-text">Individu dengan keterbatasan fisik, mental, intelektual, atau sensorik jangka panjang.</div>
+        </div>
+        <div class="col-md-4" id="wrapJumlahDisabilitas">
+          <label class="form-label">Berapa Orang?<span id="markJumlahDisabilitas"></span></label>
+          <input type="number" min="1" name="jumlah_disabilitas" id="inputJumlahDisabilitas" class="form-control" value="<?= e($_POST['jumlah_disabilitas'] ?? '') ?>">
+        </div>
+        <div class="col-md-4" id="wrapJenisDisabilitas">
+          <label class="form-label">Jenis Disabilitas<span id="markJenisDisabilitas"></span></label>
+          <input type="text" name="jenis_disabilitas" id="inputJenisDisabilitas" class="form-control" placeholder="contoh: Fisik, Sensorik (tuna netra)" value="<?= e($_POST['jenis_disabilitas'] ?? '') ?>">
         </div>
       </div>
     </div>
@@ -285,6 +334,17 @@ function toggleDeskripsiPekerjaan() {
 document.getElementById('selStatusPekerjaan').addEventListener('change', toggleDeskripsiPekerjaan);
 toggleDeskripsiPekerjaan();
 
+function toggleDeskripsiBantuan() {
+  const ya = document.getElementById('bantuanYa').checked;
+  document.getElementById('wrapDeskripsiBantuan').style.display = ya ? 'block' : 'none';
+  document.getElementById('inputDeskripsiBantuan').required = ya;
+  document.getElementById('markDeskripsiBantuan').innerHTML = ya ? ' <span class="text-danger">*</span>' : '';
+  if (!ya) document.getElementById('inputDeskripsiBantuan').value = '';
+}
+document.getElementById('bantuanYa').addEventListener('change', toggleDeskripsiBantuan);
+document.getElementById('bantuanTidak').addEventListener('change', toggleDeskripsiBantuan);
+toggleDeskripsiBantuan();
+
 function toggleJumlahUmkm() {
   const ya = document.getElementById('umkmYa').checked;
   document.getElementById('wrapJumlahUmkm').style.display = ya ? 'block' : 'none';
@@ -295,6 +355,20 @@ function toggleJumlahUmkm() {
 document.getElementById('umkmYa').addEventListener('change', toggleJumlahUmkm);
 document.getElementById('umkmTidak').addEventListener('change', toggleJumlahUmkm);
 toggleJumlahUmkm();
+
+function toggleDisabilitas() {
+  const ya = document.getElementById('disabilitasYa').checked;
+  document.getElementById('wrapJumlahDisabilitas').style.display = ya ? 'block' : 'none';
+  document.getElementById('wrapJenisDisabilitas').style.display = ya ? 'block' : 'none';
+  document.getElementById('inputJumlahDisabilitas').required = ya;
+  document.getElementById('inputJenisDisabilitas').required = ya;
+  document.getElementById('markJumlahDisabilitas').innerHTML = ya ? ' <span class="text-danger">*</span>' : '';
+  document.getElementById('markJenisDisabilitas').innerHTML = ya ? ' <span class="text-danger">*</span>' : '';
+  if (!ya) { document.getElementById('inputJumlahDisabilitas').value = ''; document.getElementById('inputJenisDisabilitas').value = ''; }
+}
+document.getElementById('disabilitasYa').addEventListener('change', toggleDisabilitas);
+document.getElementById('disabilitasTidak').addEventListener('change', toggleDisabilitas);
+toggleDisabilitas();
 
 Draft.init('formKeluargaCreate', 'draft_keluarga_create', { bannerElId: 'draftBanner', statusElId: 'draftStatus' });
 </script>

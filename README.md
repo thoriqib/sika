@@ -213,6 +213,14 @@ Migrasi versi-versi sebelumnya (`update_database.sql` s.d. `update_database_v7.s
 tetap disertakan sebagai arsip riwayat perubahan struktur, dan hanya relevan
 untuk instalasi yang belum pernah menjalankan migrasi tersebut sebelumnya.
 
+Jika instalasi Anda sudah menjalankan v8 namun belum memiliki kolom Deskripsi
+Bantuan, Disabilitas, dan Status Keberadaan Keluarga, jalankan juga
+**`sql/update_database_v9.sql`** (aman dijalankan berkali-kali, tidak
+menghapus data).
+
+Untuk menambahkan **Data Bangunan per RT** (Tempat Tinggal Terisi/Kosong,
+Khusus Usaha, Bukan Tinggal Non Usaha), jalankan **`sql/update_database_v10.sql`**.
+
 ## Data Simulasi (Sample Data)
 
 `sql/sample_data.sql` berisi **520 keluarga contoh** (bukan data asli warga),
@@ -248,17 +256,30 @@ Swasta, Pelajar/Mahasiswa, Tidak Bekerja, Lainnya. Kolom **Deskripsi
 Pekerjaan** otomatis muncul dan wajib diisi hanya jika status yang dipilih
 BUKAN "Pelajar/Mahasiswa" atau "Tidak Bekerja".
 
-## Bantuan Pemerintah & UMKM
+## Bantuan Pemerintah, UMKM & Disabilitas
 
-Dua pertanyaan Ya/Tidak per keluarga:
+Beberapa pertanyaan Ya/Tidak per keluarga:
 
-- **Pernah Menerima Bantuan Pemerintah** — dipakai untuk memantau cakupan
-  program bantuan sosial di tingkat RT/Kelurahan.
+- **Pernah Menerima Bantuan Pemerintah** — jika "Ya", wajib diisi
+  **Deskripsi Bantuan** (contoh: Bantuan Langsung Tunai/BLT, PKH, Sembako).
 - **Ada Anggota Keluarga dengan UMKM** — jika "Ya", wajib diisi jumlah
   anggota keluarga yang memiliki UMKM tersebut.
+- **Ada Anggota Keluarga Penyandang Disabilitas** (individu dengan
+  keterbatasan fisik, mental, intelektual, atau sensorik jangka panjang) —
+  jika "Ya", wajib diisi jumlah orang dan jenis disabilitasnya.
 
-Keduanya dapat difilter di halaman Data Keluarga, ditampilkan di Dashboard
+Semuanya dapat difilter di halaman Data Keluarga, ditampilkan di Dashboard
 (internal & publik), dan disertakan dalam file CSV hasil unduhan.
+
+## Status Keberadaan Keluarga
+
+Setiap keluarga memiliki status **Ada** atau **Pindah**, menggantikan konsep
+keberadaan yang dulu ada di level anggota (kini di level keluarga karena
+pendataan per-anggota sudah tidak dilakukan). Statistik utama di Dashboard
+(internal maupun publik) **hanya menghitung keluarga berstatus "Ada"** —
+keluarga berstatus "Pindah" tetap tersimpan datanya untuk riwayat, dengan
+tautan terpisah untuk melihat daftarnya, dan tidak ikut dihitung dalam
+statistik populasi aktif.
 
 ## Simpan Sementara (Draft)
 
@@ -315,7 +336,10 @@ halaman yang sedang dibuka.
 Seluruh tanggal yang ditampilkan memakai format **DD-MM-YYYY** (dan
 DD-MM-YYYY HH:mm untuk yang menyertakan jam), kecuali kolom input tanggal
 di formulir (`<input type="date">`) yang memakai format YYYY-MM-DD sesuai
-standar HTML5 (tidak memengaruhi tampilan bagi pengguna). Nomor RT
+standar HTML5 (tidak memengaruhi tampilan bagi pengguna). Seluruh jam
+ditampilkan dalam **zona waktu WIB (Asia/Jakarta, GMT+7)**, diatur secara
+eksplisit di `includes/config.php` (`date_default_timezone_set`) agar tidak
+mengikuti zona waktu default server (biasanya UTC pada VPS). Nomor RT
 diseragamkan 3 digit (mis. "RT 001") di seluruh aplikasi; saat menambah RT
 baru cukup ketik angkanya saja, sistem otomatis menyimpannya dalam format
 3 digit.
@@ -346,11 +370,38 @@ KK, atau alamat.
 
 | Tabel | Keterangan |
 |---|---|
-| `rt` | Daftar RT |
+| `rt` | Daftar RT + data jumlah bangunan per RT |
 | `users` | Akun pengguna (Ketua RT / Operator / Admin) |
 | `keluarga` | Data keluarga + data pribadi Kepala Keluarga + bantuan/UMKM |
 | `custom_fields` | Definisi variabel tambahan (+ satuan) |
 | `custom_field_values` | Isi nilai dari variabel tambahan per record |
+
+## Data Bangunan per RT
+
+Admin Kelurahan **dan Operator Kelurahan** dapat mencatat jumlah bangunan per
+RT lewat menu *Manajemen RT* (tombol Ubah pada tiap baris RT):
+
+- Jumlah Bangunan Tempat Tinggal Terisi
+- Jumlah Bangunan Kosong
+- Jumlah Bangunan Khusus Usaha
+- Jumlah Bangunan Bukan Tempat Tinggal Non Usaha
+
+Data ini murni diisi manual (bukan dihitung otomatis dari data keluarga), dan
+ditampilkan sebagai kartu ringkasan serta grafik per RT baik di Dashboard
+internal maupun Dashboard Publik.
+
+**Pembagian akses di halaman Manajemen RT:**
+
+| Aksi | Admin Kelurahan | Operator Kelurahan |
+|---|---|---|
+| Melihat data RT & bangunan | Ya | Ya |
+| Mengubah data bangunan | Ya | Ya |
+| Mengubah Nomor RT / Keterangan | Ya | Tidak |
+| Menambah RT baru | Ya | Tidak |
+| Menghapus RT | Ya | Tidak |
+
+Operator Kelurahan mengakses halaman ini lewat menu **"Data RT & Bangunan"**
+pada navbar (terpisah dari menu "Administrasi" yang khusus Admin).
 
 ## Struktur Folder
 
@@ -364,7 +415,9 @@ sika-mudunglaut/
 │   ├── update_database.sql           # Migrasi arsip (riwayat versi lama)
 │   ├── update_database_v3.sql        # s.d.
 │   ├── update_database_v7.sql        # (arsip riwayat migrasi versi lama)
-│   └── update_database_v8.sql        # Migrasi: pendataan level keluarga saja
+│   ├── update_database_v8.sql        # Migrasi: pendataan level keluarga saja
+│   ├── update_database_v9.sql        # Migrasi: deskripsi bantuan, disabilitas, status keberadaan
+│   └── update_database_v10.sql       # Migrasi: data bangunan per RT
 ├── includes/
 │   ├── config.php
 │   ├── functions.php

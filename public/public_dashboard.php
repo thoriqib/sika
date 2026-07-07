@@ -7,16 +7,25 @@ $pageTitle = 'Dashboard Publik';
 
 $rtList = $pdo->query("SELECT * FROM rt ORDER BY nomor_rt")->fetchAll();
 
+$bangunanTotal = $pdo->query("SELECT
+    COALESCE(SUM(jml_bangunan_tinggal_terisi),0) terisi,
+    COALESCE(SUM(jml_bangunan_tinggal_kosong),0) kosong,
+    COALESCE(SUM(jml_bangunan_khusus_usaha),0) usaha,
+    COALESCE(SUM(jml_bangunan_bukan_tinggal_non_usaha),0) non_usaha
+    FROM rt")->fetch();
+
 // ===================== Ringkasan Umum =====================
-$totalKeluarga = (int)$pdo->query("SELECT COUNT(*) c FROM keluarga")->fetch()['c'];
-$totalLk = (int)$pdo->query("SELECT COALESCE(SUM(jumlah_lk),0) c FROM keluarga")->fetch()['c'];
-$totalPr = (int)$pdo->query("SELECT COALESCE(SUM(jumlah_pr),0) c FROM keluarga")->fetch()['c'];
+$totalKeluarga = (int)$pdo->query("SELECT COUNT(*) c FROM keluarga WHERE status_keberadaan='Ada'")->fetch()['c'];
+$totalLk = (int)$pdo->query("SELECT COALESCE(SUM(jumlah_lk),0) c FROM keluarga WHERE status_keberadaan='Ada'")->fetch()['c'];
+$totalPr = (int)$pdo->query("SELECT COALESCE(SUM(jumlah_pr),0) c FROM keluarga WHERE status_keberadaan='Ada'")->fetch()['c'];
 $totalPenduduk = $totalLk + $totalPr;
 $rataAnggota = $totalKeluarga > 0 ? round($totalPenduduk / $totalKeluarga, 1) : 0;
 $rasioJk = $totalPr > 0 ? round($totalLk / $totalPr * 100, 1) : 0;
 
-$totalBantuan = (int)$pdo->query("SELECT COUNT(*) c FROM keluarga WHERE pernah_bantuan='Ya'")->fetch()['c'];
-$totalUmkm = (int)$pdo->query("SELECT COUNT(*) c FROM keluarga WHERE ada_umkm='Ya'")->fetch()['c'];
+$totalBantuan = (int)$pdo->query("SELECT COUNT(*) c FROM keluarga WHERE pernah_bantuan='Ya' AND status_keberadaan='Ada'")->fetch()['c'];
+$totalUmkm = (int)$pdo->query("SELECT COUNT(*) c FROM keluarga WHERE ada_umkm='Ya' AND status_keberadaan='Ada'")->fetch()['c'];
+$totalDisabilitasKk = (int)$pdo->query("SELECT COUNT(*) c FROM keluarga WHERE ada_disabilitas='Ya' AND status_keberadaan='Ada'")->fetch()['c'];
+$totalDisabilitasOrang = (int)$pdo->query("SELECT COALESCE(SUM(jumlah_disabilitas),0) c FROM keluarga WHERE ada_disabilitas='Ya' AND status_keberadaan='Ada'")->fetch()['c'];
 $persenBantuan = $totalKeluarga > 0 ? round($totalBantuan / $totalKeluarga * 100, 1) : 0;
 $persenUmkm = $totalKeluarga > 0 ? round($totalUmkm / $totalKeluarga * 100, 1) : 0;
 
@@ -25,8 +34,10 @@ $perRt = $pdo->query("
     SELECT r.id, r.nomor_rt, COUNT(k.id) jml_keluarga,
            COALESCE(SUM(k.jumlah_total),0) jml_penduduk,
            COALESCE(SUM(CASE WHEN k.pernah_bantuan='Ya' THEN 1 ELSE 0 END),0) jml_bantuan,
-           COALESCE(SUM(CASE WHEN k.ada_umkm='Ya' THEN 1 ELSE 0 END),0) jml_umkm
-    FROM rt r LEFT JOIN keluarga k ON k.rt_id = r.id
+           COALESCE(SUM(CASE WHEN k.ada_umkm='Ya' THEN 1 ELSE 0 END),0) jml_umkm,
+           r.jml_bangunan_tinggal_terisi, r.jml_bangunan_tinggal_kosong,
+           r.jml_bangunan_khusus_usaha, r.jml_bangunan_bukan_tinggal_non_usaha
+    FROM rt r LEFT JOIN keluarga k ON k.rt_id = r.id AND k.status_keberadaan = 'Ada'
     GROUP BY r.id ORDER BY r.nomor_rt
 ")->fetchAll();
 
@@ -37,6 +48,8 @@ foreach ($perRt as $r) {
     $mapPoints[] = [
         'rt' => $r['nomor_rt'], 'keluarga' => (int)$r['jml_keluarga'], 'penduduk' => (int)$r['jml_penduduk'],
         'persen_bantuan' => $persenBantuanRt, 'persen_umkm' => $persenUmkmRt,
+        'bangunan_terisi' => (int)$r['jml_bangunan_tinggal_terisi'], 'bangunan_kosong' => (int)$r['jml_bangunan_tinggal_kosong'],
+        'bangunan_usaha' => (int)$r['jml_bangunan_khusus_usaha'], 'bangunan_non_usaha' => (int)$r['jml_bangunan_bukan_tinggal_non_usaha'],
         'ada_data' => (int)$r['jml_keluarga'] > 0,
     ];
 }
@@ -52,7 +65,7 @@ $ageRows = $pdo->query("
         ELSE '4'
       END AS grp,
       jenis_kelamin_kepala_keluarga AS jk, COUNT(*) jml
-    FROM keluarga
+    FROM keluarga WHERE status_keberadaan = 'Ada'
     GROUP BY grp, jk
 ")->fetchAll();
 $ageLabels = ['< 30 Tahun','30-39 Tahun','40-49 Tahun','50-59 Tahun','60+ Tahun'];
@@ -63,7 +76,7 @@ foreach ($ageRows as $ar) {
 }
 
 function distribusiKk(PDO $pdo, $kolom) {
-    $stmt = $pdo->query("SELECT $kolom AS k, COUNT(*) jml FROM keluarga WHERE $kolom IS NOT NULL AND $kolom <> '' GROUP BY $kolom ORDER BY jml DESC");
+    $stmt = $pdo->query("SELECT $kolom AS k, COUNT(*) jml FROM keluarga WHERE $kolom IS NOT NULL AND $kolom <> '' AND status_keberadaan = 'Ada' GROUP BY $kolom ORDER BY jml DESC");
     $out = [];
     foreach ($stmt->fetchAll() as $row) { $out[$row['k']] = (int)$row['jml']; }
     return $out;
@@ -133,22 +146,56 @@ require __DIR__ . '/../includes/partials_header.php';
 </div>
 
 <div class="row g-3 mb-2">
-  <div class="col-6 col-md-4">
+  <div class="col-6 col-md-3">
     <div class="card pub-kpi border-0 shadow-sm h-100" style="border-left:4px solid #14867a"><div class="card-body">
       <div class="text-muted small">Keluarga Pernah Terima Bantuan</div>
       <div class="fs-4 fw-bold text-teal"><?= number_format($totalBantuan) ?> <span class="fs-6 fw-normal text-muted">(<?= $persenBantuan ?>%)</span></div>
     </div></div>
   </div>
-  <div class="col-6 col-md-4">
+  <div class="col-6 col-md-3">
     <div class="card pub-kpi border-0 shadow-sm h-100" style="border-left:4px solid #fd7e14"><div class="card-body">
       <div class="text-muted small">Keluarga dengan UMKM</div>
       <div class="fs-4 fw-bold" style="color:#fd7e14"><?= number_format($totalUmkm) ?> <span class="fs-6 fw-normal text-muted">(<?= $persenUmkm ?>%)</span></div>
     </div></div>
   </div>
-  <div class="col-12 col-md-4">
+  <div class="col-6 col-md-3">
+    <div class="card pub-kpi border-0 shadow-sm h-100" style="border-left:4px solid #6610f2"><div class="card-body">
+      <div class="text-muted small">Penyandang Disabilitas</div>
+      <div class="fs-4 fw-bold" style="color:#6610f2"><?= number_format($totalDisabilitasOrang) ?> <span class="fs-6 fw-normal text-muted">orang</span></div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md-3">
     <div class="card pub-kpi border-0 shadow-sm h-100" style="border-left:4px solid #6c757d"><div class="card-body">
       <div class="text-muted small">Jumlah RT</div>
       <div class="fs-4 fw-bold"><?= count($rtList) ?></div>
+    </div></div>
+  </div>
+</div>
+
+<div class="pub-section-title"><i class="bi bi-building"></i> Data Bangunan</div>
+<div class="row g-3 mb-2">
+  <div class="col-6 col-md-3">
+    <div class="card pub-kpi border-0 shadow-sm h-100"><div class="card-body">
+      <div class="text-muted small">Tempat Tinggal Terisi</div>
+      <div class="fs-4 fw-bold text-teal"><?= number_format($bangunanTotal['terisi']) ?></div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card pub-kpi border-0 shadow-sm h-100"><div class="card-body">
+      <div class="text-muted small">Bangunan Kosong</div>
+      <div class="fs-4 fw-bold text-secondary"><?= number_format($bangunanTotal['kosong']) ?></div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card pub-kpi border-0 shadow-sm h-100"><div class="card-body">
+      <div class="text-muted small">Khusus Usaha</div>
+      <div class="fs-4 fw-bold" style="color:#fd7e14"><?= number_format($bangunanTotal['usaha']) ?></div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card pub-kpi border-0 shadow-sm h-100"><div class="card-body">
+      <div class="text-muted small">Bukan Tinggal, Non Usaha</div>
+      <div class="fs-4 fw-bold text-muted"><?= number_format($bangunanTotal['non_usaha']) ?></div>
     </div></div>
   </div>
 </div>
@@ -186,6 +233,15 @@ require __DIR__ . '/../includes/partials_header.php';
     <div class="card border-0 shadow-sm h-100"><div class="card-body">
       <h6 class="text-muted">% Keluarga dengan UMKM per RT</h6>
       <canvas id="chartUmkmRt" height="220"></canvas>
+    </div></div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-12">
+    <div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <h6 class="text-muted">Data Bangunan per RT</h6>
+      <canvas id="chartBangunanRt" height="200"></canvas>
     </div></div>
   </div>
 </div>
@@ -342,6 +398,20 @@ new Chart(document.getElementById('chartUmkmRt'), {
   type: 'bar',
   data: { labels: chartRtData.map(p => 'RT ' + p.rt), datasets: [{ label: '% UMKM', data: chartRtData.map(p => p.persen_umkm), backgroundColor: ORANGE }] },
   options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => v + '%' } } } },
+});
+
+new Chart(document.getElementById('chartBangunanRt'), {
+  type: 'bar',
+  data: {
+    labels: chartRtData.map(p => 'RT ' + p.rt),
+    datasets: [
+      { label: 'Tinggal Terisi', data: chartRtData.map(p => p.bangunan_terisi), backgroundColor: TEAL },
+      { label: 'Bangunan Kosong', data: chartRtData.map(p => p.bangunan_kosong), backgroundColor: '#adb5bd' },
+      { label: 'Khusus Usaha', data: chartRtData.map(p => p.bangunan_usaha), backgroundColor: ORANGE },
+      { label: 'Bukan Tinggal, Non Usaha', data: chartRtData.map(p => p.bangunan_non_usaha), backgroundColor: '#6610f2' },
+    ],
+  },
+  options: { scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } },
 });
 
 // ---------- Chart: Kelompok Usia Kepala Keluarga ----------

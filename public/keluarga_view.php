@@ -12,7 +12,7 @@ require __DIR__ . '/../includes/partials_header.php';
 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
   <div>
     <h4 class="fw-semibold mb-0"><?= e($keluarga['nama_kepala_keluarga']) ?></h4>
-    <div class="text-muted">RT <?= e($keluarga['nomor_rt']) ?> &bull; No. KK <?= e(maskDigits($keluarga['nomor_kk'])) ?></div>
+    <div class="text-muted">RT <?= e($keluarga['nomor_rt']) ?> &bull; No. KK <?= e(maskDigits($keluarga['nomor_kk'])) ?> &bull; <?= keberadaanKeluargaBadge($keluarga['status_keberadaan']) ?></div>
   </div>
   <div>
     <a href="keluarga_edit.php?id=<?= $id ?>" class="btn btn-outline-secondary"><i class="bi bi-pencil"></i> Ubah</a>
@@ -32,11 +32,22 @@ require __DIR__ . '/../includes/partials_header.php';
           <div class="col-sm-4 mb-2"><span class="text-muted small">Jumlah Perempuan</span><div><?= (int)$keluarga['jumlah_pr'] ?></div></div>
           <div class="col-sm-4 mb-2"><span class="text-muted small">Total Anggota</span><div class="fw-semibold"><?= (int)$keluarga['jumlah_total'] ?></div></div>
           <div class="col-sm-6 mb-2"><span class="text-muted small">Pernah Menerima Bantuan Pemerintah</span><div>
-            <?= $keluarga['pernah_bantuan']==='Ya' ? '<span class="badge bg-success">Ya</span>' : '<span class="badge bg-secondary">Tidak</span>' ?>
+            <?php if ($keluarga['pernah_bantuan']==='Ya'): ?>
+              <span class="badge bg-success">Ya</span> <span class="text-muted small"><?= e($keluarga['deskripsi_bantuan']) ?></span>
+            <?php else: ?>
+              <span class="badge bg-secondary">Tidak</span>
+            <?php endif; ?>
           </div></div>
           <div class="col-sm-6 mb-2"><span class="text-muted small">Ada Anggota Keluarga dengan UMKM</span><div>
             <?php if ($keluarga['ada_umkm']==='Ya'): ?>
               <span class="badge bg-success">Ya</span> <span class="text-muted small">(<?= (int)$keluarga['jumlah_anggota_umkm'] ?> orang)</span>
+            <?php else: ?>
+              <span class="badge bg-secondary">Tidak</span>
+            <?php endif; ?>
+          </div></div>
+          <div class="col-sm-6 mb-2"><span class="text-muted small">Ada Anggota Keluarga Penyandang Disabilitas</span><div>
+            <?php if ($keluarga['ada_disabilitas']==='Ya'): ?>
+              <span class="badge bg-success">Ya</span> <span class="text-muted small">(<?= (int)$keluarga['jumlah_disabilitas'] ?> orang &mdash; <?= e($keluarga['jenis_disabilitas']) ?>)</span>
             <?php else: ?>
               <span class="badge bg-secondary">Tidak</span>
             <?php endif; ?>

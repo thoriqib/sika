@@ -22,6 +22,9 @@
         <li class="nav-item"><a class="nav-link" href="dashboard.php"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
         <li class="nav-item"><a class="nav-link" href="keluarga_list.php"><i class="bi bi-people-fill"></i> Data Keluarga</a></li>
         <li class="nav-item"><a class="nav-link" href="public_dashboard.php" target="_blank"><i class="bi bi-bar-chart-line-fill"></i> Dashboard Publik</a></li>
+        <?php if (hasRole(['operator_kelurahan'])): ?>
+        <li class="nav-item"><a class="nav-link" href="admin_rt.php"><i class="bi bi-building"></i> Data RT &amp; Bangunan</a></li>
+        <?php endif; ?>
         <?php if (hasRole(['admin_kelurahan'])): ?>
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"><i class="bi bi-gear-fill"></i> Administrasi</a>

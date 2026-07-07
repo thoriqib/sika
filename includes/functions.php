@@ -147,6 +147,14 @@ function pilihanAgama() {
 function pilihanStatusKawin() {
     return ['Belum Kawin','Kawin','Cerai Hidup','Cerai Mati'];
 }
+// Badge Bootstrap untuk status keberadaan keluarga
+function keberadaanKeluargaBadge($status) {
+    if ($status === 'Pindah') {
+        return '<span class="badge bg-warning text-dark">Pindah</span>';
+    }
+    return '<span class="badge bg-success">Ada</span>';
+}
+
 function pilihanPendidikan() {
     return ['Tidak/Belum Sekolah','SD','SMP','SMA/SMK','D1/D2/D3','S1','S2','S3'];
 }

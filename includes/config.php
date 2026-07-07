@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set('Asia/Jakarta'); // WIB (GMT+7) — semua tanggal/jam di aplikasi mengikuti zona ini
 session_start();
 
 // ================= Konfigurasi Database =================

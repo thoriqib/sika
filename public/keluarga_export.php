@@ -6,6 +6,7 @@ $search = trim($_GET['q'] ?? '');
 $rtFilter = $_GET['rt'] ?? '';
 $bantuanFilter = $_GET['bantuan'] ?? '';
 $umkmFilter = $_GET['umkm'] ?? '';
+$keberadaanFilter = $_GET['keberadaan'] ?? '';
 
 $where = "WHERE 1=1";
 $params = [];
@@ -29,6 +30,10 @@ if (in_array($umkmFilter, ['Ya','Tidak'], true)) {
     $where .= " AND k.ada_umkm = ?";
     $params[] = $umkmFilter;
 }
+if (in_array($keberadaanFilter, ['Ada','Pindah'], true)) {
+    $where .= " AND k.status_keberadaan = ?";
+    $params[] = $keberadaanFilter;
+}
 
 $sql = "SELECT k.*, r.nomor_rt FROM keluarga k JOIN rt r ON r.id=k.rt_id $where ORDER BY r.nomor_rt, k.nama_kepala_keluarga";
 $stmt = $pdo->prepare($sql);
@@ -44,11 +49,13 @@ $out = fopen('php://output', 'w');
 fwrite($out, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM agar Excel membaca UTF-8 dengan benar
 
 $headers = [
-    'Nama Kepala Keluarga', 'Nomor KK', 'RT', 'Alamat',
+    'Nama Kepala Keluarga', 'Nomor KK', 'RT', 'Alamat', 'Status Keberadaan Keluarga',
     'Jumlah Laki-laki', 'Jumlah Perempuan', 'Jumlah Total Anggota',
     'NIK Kepala Keluarga', 'Jenis Kelamin KK', 'Tanggal Lahir KK', 'Agama KK',
     'Status Perkawinan KK', 'Pendidikan KK', 'Status Pekerjaan KK', 'Deskripsi Pekerjaan KK',
-    'Pernah Terima Bantuan Pemerintah', 'Ada UMKM', 'Jumlah Anggota Pemilik UMKM',
+    'Pernah Terima Bantuan Pemerintah', 'Deskripsi Bantuan',
+    'Ada UMKM', 'Jumlah Anggota Pemilik UMKM',
+    'Ada Penyandang Disabilitas', 'Jumlah Penyandang Disabilitas', 'Jenis Disabilitas',
     'Terakhir Diupdate',
 ];
 foreach ($customFields as $cf) {
@@ -63,6 +70,7 @@ foreach ($data as $row) {
         $row['nomor_kk'],
         'RT ' . $row['nomor_rt'],
         $row['alamat'],
+        $row['status_keberadaan'],
         $row['jumlah_lk'],
         $row['jumlah_pr'],
         $row['jumlah_total'],
@@ -75,8 +83,12 @@ foreach ($data as $row) {
         $row['status_pekerjaan_kepala_keluarga'],
         $row['pekerjaan_kepala_keluarga'],
         $row['pernah_bantuan'],
+        $row['deskripsi_bantuan'],
         $row['ada_umkm'],
         $row['jumlah_anggota_umkm'],
+        $row['ada_disabilitas'],
+        $row['jumlah_disabilitas'],
+        $row['jenis_disabilitas'],
         formatTanggalWaktu($row['updated_at']),
     ];
     foreach ($customFields as $cf) $line[] = $customValues[$cf['field_key']] ?? '';
