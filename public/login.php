@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
-if (isLoggedIn()) { header('Location: dashboard.php'); exit; }
+if (isLoggedIn()) { header('Location: ' . landingPageFor(currentUser()['role'])); exit; }
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -20,7 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'rt_id'     => $user['rt_id'],
             'nomor_rt'  => $user['nomor_rt'],
         ];
-        header('Location: dashboard.php');
+        setRememberCookie($pdo, $user['id']);
+        header('Location: ' . landingPageFor($user['role']));
         exit;
     } else {
         $error = 'Username atau password salah, atau akun tidak aktif.';

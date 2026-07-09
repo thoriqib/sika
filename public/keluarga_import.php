@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
-requireRole(['ketua_rt','operator_kelurahan','admin_kelurahan']);
+requireRole(['operator_kelurahan','admin_kelurahan']);
 $pageTitle = 'Impor Data Keluarga dari Excel';
 
 $COL = [

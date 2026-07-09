@@ -3,7 +3,7 @@
 -- Kelurahan Mudung Laut, Kecamatan Pelayangan, Kota Jambi
 -- File TUNGGAL untuk deploy ke server baru — sudah mencakup seluruh
 -- pembaruan struktur s.d. saat ini (keluarga, bantuan/UMKM/disabilitas,
--- status keberadaan, data bangunan per RT).
+-- status keberadaan, data bangunan per RT, login persisten).
 -- Cara pakai:
 -- 1. Buka phpMyAdmin (http://localhost/phpmyadmin)
 -- 2. Buat database baru bernama: pemutakhiran_keluarga
@@ -48,6 +48,8 @@ CREATE TABLE users (
   role ENUM('admin_kelurahan','operator_kelurahan','ketua_rt') NOT NULL,
   rt_id INT NULL,
   status ENUM('aktif','nonaktif') DEFAULT 'aktif',
+  remember_token_hash VARCHAR(255) NULL,     -- untuk fitur "tetap masuk" (login persisten)
+  remember_token_expires DATETIME NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (rt_id) REFERENCES rt(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;

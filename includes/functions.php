@@ -36,6 +36,98 @@ function requireRole($roles) {
     }
 }
 
+// Halaman awal setelah login, disesuaikan per peran: Ketua RT langsung ke Data
+// Keluarga (paling sering dipakai sehari-hari), peran lain ke Dashboard.
+function landingPageFor($role) {
+    return $role === 'ketua_rt' ? 'keluarga_list.php' : 'dashboard.php';
+}
+
+// ===================== "Ingat Saya" (login persisten via cookie) =====================
+// Supaya pengguna tidak perlu login ulang tiap kunjungan (sampai benar-benar logout).
+// Cookie HANYA berisi user_id + token acak; yang disimpan di database adalah HASH
+// dari token tsb (bukan token asli), sehingga aman meski database bocor.
+const REMEMBER_COOKIE_NAME = 'sika_remember';
+const REMEMBER_COOKIE_DAYS = 30;
+
+function setRememberCookie(PDO $pdo, $userId) {
+    $token = bin2hex(random_bytes(32));
+    $hash = hash('sha256', $token);
+    $expires = date('Y-m-d H:i:s', time() + REMEMBER_COOKIE_DAYS * 86400);
+
+    $pdo->prepare("UPDATE users SET remember_token_hash = ?, remember_token_expires = ? WHERE id = ?")
+        ->execute([$hash, $expires, $userId]);
+
+    setcookie(REMEMBER_COOKIE_NAME, $userId . ':' . $token, [
+        'expires' => time() + REMEMBER_COOKIE_DAYS * 86400,
+        'path' => '/',
+        'httponly' => true,
+        'samesite' => 'Lax',
+        'secure' => !empty($_SERVER['HTTPS']),
+    ]);
+}
+
+function clearRememberCookie(PDO $pdo, $userId = null) {
+    if ($userId) {
+        $pdo->prepare("UPDATE users SET remember_token_hash = NULL, remember_token_expires = NULL WHERE id = ?")->execute([$userId]);
+    }
+    setcookie(REMEMBER_COOKIE_NAME, '', [
+        'expires' => time() - 3600,
+        'path' => '/',
+        'httponly' => true,
+        'samesite' => 'Lax',
+        'secure' => !empty($_SERVER['HTTPS']),
+    ]);
+}
+
+// Coba login otomatis dari cookie "Ingat Saya" jika sesi sedang tidak aktif.
+// Dipanggil sekali dari config.php pada setiap request.
+function tryAutoLoginFromCookie(PDO $pdo) {
+    if (isLoggedIn() || empty($_COOKIE[REMEMBER_COOKIE_NAME])) return;
+
+    $parts = explode(':', $_COOKIE[REMEMBER_COOKIE_NAME], 2);
+    if (count($parts) !== 2) return;
+    [$userId, $token] = $parts;
+    if (!ctype_digit($userId)) return;
+
+    $stmt = $pdo->prepare("SELECT u.*, r.nomor_rt FROM users u LEFT JOIN rt r ON r.id = u.rt_id
+        WHERE u.id = ? AND u.status = 'aktif' AND u.remember_token_hash IS NOT NULL
+        AND u.remember_token_expires > NOW()");
+    $stmt->execute([$userId]);
+    $user = $stmt->fetch();
+
+    if ($user && hash_equals($user['remember_token_hash'], hash('sha256', $token))) {
+        $_SESSION['user'] = [
+            'id'        => $user['id'],
+            'nama'      => $user['nama'],
+            'username'  => $user['username'],
+            'role'      => $user['role'],
+            'rt_id'     => $user['rt_id'],
+            'nomor_rt'  => $user['nomor_rt'],
+        ];
+        // Perpanjang & rotasi token setiap kali dipakai (mengurangi risiko replay)
+        setRememberCookie($pdo, $user['id']);
+    } else {
+        clearRememberCookie($pdo);
+    }
+}
+
+// ===================== Format tanggal dd/mm/yyyy pada form =====================
+// Semua input tanggal di FORM wajib tampil & diketik dengan format dd/mm/yyyy
+// (bukan date picker bawaan browser yang formatnya mengikuti locale perangkat).
+function parseTanggalForm($str) {
+    if (!preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', trim((string)$str), $m)) return null;
+    [, $d, $mo, $y] = $m;
+    if (!checkdate((int)$mo, (int)$d, (int)$y)) return null;
+    return sprintf('%04d-%02d-%02d', $y, $mo, $d);
+}
+
+function tanggalUntukForm($ymd) {
+    if (!$ymd) return '';
+    $ts = strtotime($ymd);
+    if (!$ts) return '';
+    return date('d/m/Y', $ts);
+}
+
 function formatRupiah($angka) {
     return 'Rp ' . number_format((float)$angka, 0, ',', '.');
 }

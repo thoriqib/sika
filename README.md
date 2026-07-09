@@ -93,8 +93,10 @@ sika-mudunglaut/
 4. *(Opsional, untuk uji coba)* Import juga `sql/sample_data.sql` dengan cara
    yang sama, untuk mengisi 520 keluarga contoh. Lihat bagian **Data
    Simulasi** di bawah untuk detail akun contoh.
-5. **Akses aplikasi**: `http://localhost/sika-mudunglaut/public/`
-6. **Login**: username `admin`, password `admin123` — segera ganti password
+5. *(Untuk data produksi asli)* Import `sql/buat_user_ketua_rt.sql` untuk
+   membuat 9 akun Ketua RT resmi (lihat bagian **Akun Ketua RT** di bawah).
+6. **Akses aplikasi**: `http://localhost/sika-mudunglaut/public/`
+7. **Login**: username `admin`, password `admin123` — segera ganti password
    setelah login pertama (menu *Administrasi > Manajemen Pengguna > Ubah*)
 
 **Supaya tidak perlu mengetik `/public/` setiap saat (opsional):** buat
@@ -221,6 +223,9 @@ menghapus data).
 Untuk menambahkan **Data Bangunan per RT** (Tempat Tinggal Terisi/Kosong,
 Khusus Usaha, Bukan Tinggal Non Usaha), jalankan **`sql/update_database_v10.sql`**.
 
+Untuk menambahkan fitur **Login Persisten** ("tetap masuk"), jalankan
+**`sql/update_database_v11.sql`**.
+
 ## Data Simulasi (Sample Data)
 
 `sql/sample_data.sql` berisi **520 keluarga contoh** (bukan data asli warga),
@@ -240,6 +245,77 @@ Akun contoh yang ikut ditambahkan (semua password: `admin123`):
 
 **Catatan:** `sample_data.sql` memakai ID eksplisit, jadi hanya aman
 dijalankan di database yang masih kosong.
+
+## Login Persisten ("Tetap Masuk")
+
+Mulai versi ini, pengguna **tidak perlu login ulang setiap kunjungan** —
+sistem mengingat sesi login lewat cookie aman selama 30 hari, sampai
+pengguna benar-benar menekan tombol **Keluar (Logout)**.
+
+- Cookie hanya berisi ID pengguna + token acak; yang tersimpan di database
+  adalah **hash** dari token tersebut (bukan token asli), sehingga tetap
+  aman meski database bocor.
+- Token diperpanjang & diperbarui otomatis (30 hari sejak kunjungan
+  terakhir) setiap kali pengguna aktif memakai aplikasi.
+- Menekan **Keluar** menghapus cookie DAN token di database sekaligus —
+  memastikan sesi benar-benar berakhir di perangkat tersebut.
+- Fitur ini otomatis aktif untuk semua peran, tidak perlu centang "Ingat
+  Saya" secara manual.
+
+## Halaman Awal Setelah Login
+
+Disesuaikan per peran supaya lebih efisien untuk pekerjaan sehari-hari:
+
+| Peran | Halaman Awal |
+|---|---|
+| Ketua RT | **Data Keluarga** (agar bisa langsung menambah data keluarga) |
+| Operator Kelurahan | Dashboard |
+| Admin Kelurahan | Dashboard |
+
+## Pembatasan Fitur Unduh Data & Impor Excel
+
+Fitur **Unduh Data (Export)** dan **Impor dari Excel** hanya tersedia untuk
+**Operator Kelurahan** dan **Admin Kelurahan**. Ketua RT tidak melihat kedua
+tombol ini di halaman Data Keluarga, dan jika mencoba mengakses URL-nya
+secara langsung akan ditolak (halaman 403 - Tidak memiliki akses).
+
+## Akun Ketua RT (Data Resmi)
+
+File `sql/buat_user_ketua_rt.sql` membuat 9 akun Ketua RT sesuai data resmi
+Kelurahan Mudung Laut:
+
+| Username | Nama | RT |
+|---|---|---|
+| `ketua_rt001` | KAPSUL ANWAR | 001 |
+| `ketua_rt002` | M RIDHO | 002 |
+| `ketua_rt003` | DAWIYAH | 003 |
+| `ketua_rt004` | BUKHORI | 004 |
+| `ketua_rt005` | A SAYUTI | 005 |
+| `ketua_rt006` | MARINI | 006 |
+| `ketua_rt007` | SALAMUDIN | 007 |
+| `ketua_rt008` | SIGIT | 008 |
+| `ketua_rt009` | HADI ISMANTO | 009 |
+
+Semua akun memakai password default `admin123` — **segera minta masing-masing
+Ketua RT mengganti passwordnya** setelah login pertama kali (lewat Admin
+Kelurahan di menu Manajemen Pengguna, karena SIKA belum punya fitur ubah
+password mandiri).
+
+Skrip ini **aman dijalankan berkali-kali**: jika username sudah ada, hanya
+namanya yang diperbarui (password yang sudah diganti sendiri oleh Ketua RT
+TIDAK akan tertimpa/reset).
+
+## Format Tanggal di Formulir (dd/mm/yyyy)
+
+Kolom Tanggal Lahir Kepala Keluarga pada formulir Tambah/Ubah Keluarga
+**wajib** diketik dengan format **dd/mm/yyyy** (contoh: `17/05/1990`),
+dijamin konsisten di semua browser/perangkat — tidak lagi mengandalkan date
+picker bawaan browser yang formatnya bisa berbeda-beda tergantung
+pengaturan bahasa/lokasi perangkat pengguna. Garis miring (`/`) otomatis
+ditambahkan saat mengetik, dan sistem akan menolak submit jika formatnya
+tidak sesuai.
+
+
 
 ## Aturan Data Kepala Keluarga
 
@@ -417,7 +493,9 @@ sika-mudunglaut/
 │   ├── update_database_v7.sql        # (arsip riwayat migrasi versi lama)
 │   ├── update_database_v8.sql        # Migrasi: pendataan level keluarga saja
 │   ├── update_database_v9.sql        # Migrasi: deskripsi bantuan, disabilitas, status keberadaan
-│   └── update_database_v10.sql       # Migrasi: data bangunan per RT
+│   ├── update_database_v10.sql       # Migrasi: data bangunan per RT
+│   ├── update_database_v11.sql       # Migrasi: login persisten
+│   └── buat_user_ketua_rt.sql        # Buat/perbarui 9 akun Ketua RT resmi
 ├── includes/
 │   ├── config.php
 │   ├── functions.php

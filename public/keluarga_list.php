@@ -57,8 +57,10 @@ require __DIR__ . '/../includes/partials_header.php';
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
   <h4 class="fw-semibold mb-0">Data Keluarga</h4>
   <div class="d-flex gap-2 flex-wrap">
+    <?php if (hasRole(['operator_kelurahan','admin_kelurahan'])): ?>
     <a href="keluarga_export.php?<?= http_build_query($_GET) ?>" class="btn btn-outline-secondary"><i class="bi bi-download"></i> Unduh Data</a>
     <a href="keluarga_import.php" class="btn btn-outline-secondary"><i class="bi bi-upload"></i> Impor dari Excel</a>
+    <?php endif; ?>
     <a href="keluarga_create.php" class="btn btn-teal"><i class="bi bi-plus-lg"></i> Tambah Keluarga</a>
   </div>
 </div>

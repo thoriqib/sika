@@ -27,15 +27,15 @@ USE pemutakhiran_keluarga;
 -- Pengguna contoh
 -- =========================================================
 INSERT INTO users (nama, username, password, role, rt_id, status) VALUES
-('Ahmad Sutrisno', 'ketua_rt001', '$2b$12$.XGEn3Z1sA1sYSF9YYtsoeeDKlJJeuc/lCEsZL8n.kmGR/zoLA6QW', 'ketua_rt', (SELECT id FROM rt WHERE nomor_rt='001'), 'aktif'),
-('Bambang Wijaya', 'ketua_rt002', '$2b$12$.XGEn3Z1sA1sYSF9YYtsoeeDKlJJeuc/lCEsZL8n.kmGR/zoLA6QW', 'ketua_rt', (SELECT id FROM rt WHERE nomor_rt='002'), 'aktif'),
-('Cahyo Prasetyo', 'ketua_rt003', '$2b$12$.XGEn3Z1sA1sYSF9YYtsoeeDKlJJeuc/lCEsZL8n.kmGR/zoLA6QW', 'ketua_rt', (SELECT id FROM rt WHERE nomor_rt='003'), 'aktif'),
-('Darmadi Yusuf', 'ketua_rt004', '$2b$12$.XGEn3Z1sA1sYSF9YYtsoeeDKlJJeuc/lCEsZL8n.kmGR/zoLA6QW', 'ketua_rt', (SELECT id FROM rt WHERE nomor_rt='004'), 'aktif'),
-('Eka Firmansyah', 'ketua_rt005', '$2b$12$.XGEn3Z1sA1sYSF9YYtsoeeDKlJJeuc/lCEsZL8n.kmGR/zoLA6QW', 'ketua_rt', (SELECT id FROM rt WHERE nomor_rt='005'), 'aktif'),
-('Fauzi Rahman', 'ketua_rt006', '$2b$12$.XGEn3Z1sA1sYSF9YYtsoeeDKlJJeuc/lCEsZL8n.kmGR/zoLA6QW', 'ketua_rt', (SELECT id FROM rt WHERE nomor_rt='006'), 'aktif'),
-('Gunawan Hakim', 'ketua_rt007', '$2b$12$.XGEn3Z1sA1sYSF9YYtsoeeDKlJJeuc/lCEsZL8n.kmGR/zoLA6QW', 'ketua_rt', (SELECT id FROM rt WHERE nomor_rt='007'), 'aktif'),
-('Hendra Saputra', 'ketua_rt008', '$2b$12$.XGEn3Z1sA1sYSF9YYtsoeeDKlJJeuc/lCEsZL8n.kmGR/zoLA6QW', 'ketua_rt', (SELECT id FROM rt WHERE nomor_rt='008'), 'aktif'),
-('Indra Kusnadi', 'ketua_rt009', '$2b$12$.XGEn3Z1sA1sYSF9YYtsoeeDKlJJeuc/lCEsZL8n.kmGR/zoLA6QW', 'ketua_rt', (SELECT id FROM rt WHERE nomor_rt='009'), 'aktif'),
+('KAPSUL ANWAR', 'ketua_rt001', '$2b$12$.XGEn3Z1sA1sYSF9YYtsoeeDKlJJeuc/lCEsZL8n.kmGR/zoLA6QW', 'ketua_rt', (SELECT id FROM rt WHERE nomor_rt='001'), 'aktif'),
+('M RIDHO', 'ketua_rt002', '$2b$12$.XGEn3Z1sA1sYSF9YYtsoeeDKlJJeuc/lCEsZL8n.kmGR/zoLA6QW', 'ketua_rt', (SELECT id FROM rt WHERE nomor_rt='002'), 'aktif'),
+('DAWIYAH', 'ketua_rt003', '$2b$12$.XGEn3Z1sA1sYSF9YYtsoeeDKlJJeuc/lCEsZL8n.kmGR/zoLA6QW', 'ketua_rt', (SELECT id FROM rt WHERE nomor_rt='003'), 'aktif'),
+('BUKHORI', 'ketua_rt004', '$2b$12$.XGEn3Z1sA1sYSF9YYtsoeeDKlJJeuc/lCEsZL8n.kmGR/zoLA6QW', 'ketua_rt', (SELECT id FROM rt WHERE nomor_rt='004'), 'aktif'),
+('A SAYUTI', 'ketua_rt005', '$2b$12$.XGEn3Z1sA1sYSF9YYtsoeeDKlJJeuc/lCEsZL8n.kmGR/zoLA6QW', 'ketua_rt', (SELECT id FROM rt WHERE nomor_rt='005'), 'aktif'),
+('MARINI', 'ketua_rt006', '$2b$12$.XGEn3Z1sA1sYSF9YYtsoeeDKlJJeuc/lCEsZL8n.kmGR/zoLA6QW', 'ketua_rt', (SELECT id FROM rt WHERE nomor_rt='006'), 'aktif'),
+('SALAMUDIN', 'ketua_rt007', '$2b$12$.XGEn3Z1sA1sYSF9YYtsoeeDKlJJeuc/lCEsZL8n.kmGR/zoLA6QW', 'ketua_rt', (SELECT id FROM rt WHERE nomor_rt='007'), 'aktif'),
+('SIGIT', 'ketua_rt008', '$2b$12$.XGEn3Z1sA1sYSF9YYtsoeeDKlJJeuc/lCEsZL8n.kmGR/zoLA6QW', 'ketua_rt', (SELECT id FROM rt WHERE nomor_rt='008'), 'aktif'),
+('HADI ISMANTO', 'ketua_rt009', '$2b$12$.XGEn3Z1sA1sYSF9YYtsoeeDKlJJeuc/lCEsZL8n.kmGR/zoLA6QW', 'ketua_rt', (SELECT id FROM rt WHERE nomor_rt='009'), 'aktif'),
 ('Siti Rahayu Operator', 'operator1', '$2b$12$.XGEn3Z1sA1sYSF9YYtsoeeDKlJJeuc/lCEsZL8n.kmGR/zoLA6QW', 'operator_kelurahan', NULL, 'aktif');
 
 -- =========================================================

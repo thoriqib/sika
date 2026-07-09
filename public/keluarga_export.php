@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
-requireLogin();
+requireRole(['operator_kelurahan','admin_kelurahan']);
 
 $search = trim($_GET['q'] ?? '');
 $rtFilter = $_GET['rt'] ?? '';

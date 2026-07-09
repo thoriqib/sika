@@ -46,6 +46,8 @@ CREATE TABLE users (
   role ENUM('admin_kelurahan','operator_kelurahan','ketua_rt') NOT NULL,
   rt_id INT NULL,
   status ENUM('aktif','nonaktif') DEFAULT 'aktif',
+  remember_token_hash VARCHAR(255) NULL,     -- untuk fitur "tetap masuk" (login persisten)
+  remember_token_expires DATETIME NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (rt_id) REFERENCES rt(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;

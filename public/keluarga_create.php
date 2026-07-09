@@ -44,6 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!preg_match('/^\d{16}$/', $nik)) $errors[] = 'NIK Kepala Keluarga harus berupa 16 digit angka.';
     if (!in_array($jk, ['Laki-laki','Perempuan'])) $errors[] = 'Jenis kelamin Kepala Keluarga wajib dipilih.';
     if ($tgl === '') $errors[] = 'Tanggal lahir Kepala Keluarga wajib diisi.';
+    elseif (parseTanggalForm($tgl) === null) $errors[] = 'Tanggal lahir Kepala Keluarga tidak valid (format dd/mm/yyyy).';
     if (!in_array($status_pekerjaan, pilihanStatusPekerjaan())) {
         $errors[] = 'Status pekerjaan Kepala Keluarga wajib dipilih.';
     } elseif (butuhDeskripsiPekerjaan($status_pekerjaan) && $pekerjaan === '') {
@@ -80,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
         $stmt->execute([
             $nama, $alamat, $rt_id, $nomor_kk, $jumlah_lk, $jumlah_pr, $jumlah_total,
-            $nik, $jk, $tgl, $agama, $status_kawin, $pendidikan,
+            $nik, $jk, parseTanggalForm($tgl), $agama, $status_kawin, $pendidikan,
             $status_pekerjaan, $pekerjaan,
             $pernah_bantuan, $deskripsi_bantuan, $ada_umkm, $jumlah_anggota_umkm,
             $ada_disabilitas, $jumlah_disabilitas, $jenis_disabilitas,
@@ -201,7 +202,7 @@ require __DIR__ . '/../includes/partials_header.php';
         </div>
         <div class="col-md-3">
           <label class="form-label">Tanggal Lahir<?= requiredMark() ?></label>
-          <input type="date" name="tanggal_lahir_kepala_keluarga" class="form-control" value="<?= e($_POST['tanggal_lahir_kepala_keluarga'] ?? '') ?>" required>
+          <input type="text" name="tanggal_lahir_kepala_keluarga" id="tglLahirKK" class="form-control" placeholder="dd/mm/yyyy" maxlength="10" inputmode="numeric" value="<?= e($_POST['tanggal_lahir_kepala_keluarga'] ?? '') ?>" required>
         </div>
         <div class="col-md-3">
           <label class="form-label">Agama</label>
@@ -311,6 +312,19 @@ require __DIR__ . '/../includes/partials_header.php';
 </form>
 
 <script>
+function pasangMaskTanggal(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('input', function () {
+    let v = el.value.replace(/\D/g, '').slice(0, 8);
+    let out = v.slice(0, 2);
+    if (v.length > 2) out += '/' + v.slice(2, 4);
+    if (v.length > 4) out += '/' + v.slice(4, 8);
+    el.value = out;
+  });
+}
+pasangMaskTanggal('tglLahirKK');
+
 function hitungTotalAnggota() {
   const lk = parseInt(document.getElementById('jumlahLk').value) || 0;
   const pr = parseInt(document.getElementById('jumlahPr').value) || 0;
