@@ -33,14 +33,17 @@ require __DIR__ . '/../includes/partials_header.php';
           <div class="col-sm-4 mb-2"><span class="text-muted small">Total Anggota</span><div class="fw-semibold"><?= (int)$keluarga['jumlah_total'] ?></div></div>
           <div class="col-sm-6 mb-2"><span class="text-muted small">Pernah Menerima Bantuan Pemerintah</span><div>
             <?php if ($keluarga['pernah_bantuan']==='Ya'): ?>
-              <span class="badge bg-success">Ya</span> <span class="text-muted small"><?= e($keluarga['deskripsi_bantuan']) ?></span>
+              <span class="badge bg-success">Ya</span> <span class="text-muted small"><?= e(formatJenisBantuan($keluarga['jenis_bantuan'], $keluarga['deskripsi_bantuan'])) ?></span>
+              <?php if (!empty($keluarga['tanggal_terakhir_bantuan'])): ?>
+                <div class="text-muted small">Terakhir diterima: <?= e(formatBulanTahun($keluarga['tanggal_terakhir_bantuan'])) ?></div>
+              <?php endif; ?>
             <?php else: ?>
               <span class="badge bg-secondary">Tidak</span>
             <?php endif; ?>
           </div></div>
           <div class="col-sm-6 mb-2"><span class="text-muted small">Ada Anggota Keluarga dengan UMKM</span><div>
             <?php if ($keluarga['ada_umkm']==='Ya'): ?>
-              <span class="badge bg-success">Ya</span> <span class="text-muted small">(<?= (int)$keluarga['jumlah_anggota_umkm'] ?> orang)</span>
+              <span class="badge bg-success">Ya</span> <span class="text-muted small">(L: <?= (int)$keluarga['jumlah_anggota_umkm_lk'] ?>, P: <?= (int)$keluarga['jumlah_anggota_umkm_pr'] ?>)</span>
             <?php else: ?>
               <span class="badge bg-secondary">Tidak</span>
             <?php endif; ?>

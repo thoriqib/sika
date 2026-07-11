@@ -28,25 +28,38 @@ responsif untuk desktop, tablet, dan smartphone.
   Tidak Bekerja, Lainnya); deskripsi pekerjaan bebas hanya diminta jika
   status bukan "Pelajar/Mahasiswa" atau "Tidak Bekerja".
 - **Pertanyaan Bantuan Pemerintah** — apakah keluarga pernah menerima bantuan
-  dari pemerintah (Ya/Tidak).
+  dari pemerintah (Ya/Tidak); jika Ya, pilih **jenis bantuan** lewat checkbox
+  (bisa lebih dari satu): PKH, BPNT, PIP, KIP, BPJS PBI, Bantuan Pangan,
+  Bedah Rumah, Lainnya (dengan deskripsi tambahan jika "Lainnya" dipilih).
 - **Pertanyaan UMKM** — apakah ada anggota keluarga yang memiliki UMKM
-  (Ya/Tidak), dan jika ya, berapa jumlah anggota yang memilikinya.
+  (Ya/Tidak), dan jika ya, jumlah anggota pemilik UMKM **dipisah Laki-laki
+  dan Perempuan** (tidak boleh melebihi jumlah anggota keluarga per gender).
+- **Data Bangunan per RT** (5 kategori: Tempat Tinggal, Rumah Ibadah,
+  Fasilitas Pendidikan, Fasilitas Kesehatan, Kosong) — diisi manual oleh
+  Admin/Operator/Ketua RT (RT masing-masing), ditampilkan di kedua dashboard.
+- **Repositori Data** (Admin/Operator) — rekap resmi per RT bergaya tabel
+  publikasi statistik (Tabel 3.1–3.4: penduduk, KK & bangunan, sex ratio,
+  bantuan/UMKM/disabilitas), bisa dicetak/disimpan PDF.
+- **Login Persisten** — tidak perlu login ulang setiap kunjungan (cookie aman
+  30 hari) sampai pengguna benar-benar logout.
 - **Impor data keluarga dari Excel** — tambah banyak keluarga sekaligus lewat
   file .xlsx (template tersedia lengkap dengan dropdown & contoh pengisian;
-  satu baris = satu keluarga).
+  satu baris = satu keluarga). Fitur ini beserta **Unduh Data (Export)**
+  hanya tersedia untuk Operator Kelurahan & Admin Kelurahan.
 - **Variabel Tambahan dengan satuan** — Admin bisa menambah kolom baru kapan
   saja (mis. "Luas Tanah" dengan satuan "m2") tanpa mengubah kode.
 - **Simpan Sementara (draft otomatis)** — isian formulir tersimpan otomatis di
   localStorage browser, sehingga data tidak hilang jika koneksi terputus atau
   tab tertutup sebelum sempat disimpan ke server.
 - **Paginasi** dengan pilihan 10/25/50/100/500 data per halaman.
-- Unduh (export) data keluarga ke CSV (bisa dibuka di Excel).
 - Desain responsif — tabel otomatis berubah jadi tampilan kartu di layar HP/tablet.
-- 3 peran pengguna: Ketua RT (RT sendiri), Operator Kelurahan (semua RT), Admin
-  Kelurahan (semua RT + manajemen pengguna/RT/variabel tambahan).
+- 3 peran pengguna: Ketua RT (RT sendiri, langsung ke Data Keluarga setelah
+  login), Operator Kelurahan (semua RT), Admin Kelurahan (semua RT +
+  manajemen pengguna/RT/variabel tambahan).
 - Nomor RT diseragamkan 3 digit (mis. "RT 001"), format tanggal DD-MM-YYYY
-  konsisten di seluruh halaman, dan NIK/Nomor KK disamarkan (6 digit awal
-  saja) di tampilan tabel untuk menjaga privasi.
+  konsisten di seluruh halaman (dd/mm/yyyy wajib di kolom input formulir),
+  dan NIK/Nomor KK disamarkan (6 digit awal saja) di tampilan tabel untuk
+  menjaga privasi.
 
 ## Kebutuhan
 
@@ -220,11 +233,26 @@ Bantuan, Disabilitas, dan Status Keberadaan Keluarga, jalankan juga
 **`sql/update_database_v9.sql`** (aman dijalankan berkali-kali, tidak
 menghapus data).
 
-Untuk menambahkan **Data Bangunan per RT** (Tempat Tinggal Terisi/Kosong,
-Khusus Usaha, Bukan Tinggal Non Usaha), jalankan **`sql/update_database_v10.sql`**.
+Untuk menambahkan **Data Bangunan per RT** (versi lama: Tempat Tinggal
+Terisi/Kosong, Khusus Usaha, Bukan Tinggal Non Usaha), jalankan
+**`sql/update_database_v10.sql`**.
 
 Untuk menambahkan fitur **Login Persisten** ("tetap masuk"), jalankan
 **`sql/update_database_v11.sql`**.
+
+Untuk memperbarui ke **Jenis Bantuan (checkbox), UMKM per gender, dan 5
+kategori Bangunan baru** (Tempat Tinggal, Rumah Ibadah, Fasilitas
+Pendidikan, Fasilitas Kesehatan, Kosong — menggantikan 4 kategori lama),
+jalankan **`sql/update_database_v12.sql`**. **PENTING**: baca komentar di
+awal file tersebut — data UMKM lama tidak bisa otomatis dipecah per gender
+secara akurat, dan data Bangunan kategori lama tidak dipetakan otomatis ke
+kategori baru (perlu diinput ulang oleh Admin/Operator/Ketua RT).
+
+Untuk menambahkan pertanyaan **Kapan Terakhir Menerima Bantuan**, jalankan
+**`sql/update_database_v13.sql`**. Catatan: pilihan Jenis Bantuan "Bantuan
+Pangan" sudah diganti menjadi "BLT" mulai versi ini — data lama yang sudah
+tersimpan dengan nilai "Bantuan Pangan" tetap utuh apa adanya (tidak diubah
+otomatis), hanya pilihan baru di formulir/impor yang berubah.
 
 ## Data Simulasi (Sample Data)
 
@@ -278,6 +306,14 @@ Fitur **Unduh Data (Export)** dan **Impor dari Excel** hanya tersedia untuk
 **Operator Kelurahan** dan **Admin Kelurahan**. Ketua RT tidak melihat kedua
 tombol ini di halaman Data Keluarga, dan jika mencoba mengakses URL-nya
 secara langsung akan ditolak (halaman 403 - Tidak memiliki akses).
+
+**Unduh Data mengikuti filter yang sedang aktif** — jika Anda sedang
+memfilter/mencari data (RT, status bantuan, UMKM, keberadaan, kata kunci),
+tombol "Unduh Data" hanya akan mengunduh data yang sesuai filter tersebut.
+Jika tidak ada filter aktif, seluruh data akan diunduh. Tombol ini
+menampilkan badge kecil yang menunjukkan status & jumlah data yang akan
+diunduh — **"Terfilter • N"** (warna teal) atau **"Semua • N"** (abu-abu) —
+supaya jelas sebelum benar-benar mengunduh.
 
 ## Akun Ketua RT (Data Resmi)
 
@@ -334,18 +370,26 @@ BUKAN "Pelajar/Mahasiswa" atau "Tidak Bekerja".
 
 ## Bantuan Pemerintah, UMKM & Disabilitas
 
-Beberapa pertanyaan Ya/Tidak per keluarga:
+Beberapa pertanyaan per keluarga:
 
-- **Pernah Menerima Bantuan Pemerintah** — jika "Ya", wajib diisi
-  **Deskripsi Bantuan** (contoh: Bantuan Langsung Tunai/BLT, PKH, Sembako).
-- **Ada Anggota Keluarga dengan UMKM** — jika "Ya", wajib diisi jumlah
-  anggota keluarga yang memiliki UMKM tersebut.
+- **Pernah Menerima Bantuan Pemerintah** (Ya/Tidak) — jika "Ya", muncul
+  **checkbox Jenis Bantuan** yang bisa dipilih lebih dari satu:
+  PKH, BPNT, PIP, KIP, BPJS PBI, BLT, Bedah Rumah, Lainnya.
+  Jika "Lainnya" dicentang, wajib diisi kolom Deskripsi Bantuan untuk
+  menjelaskan jenis bantuan tersebut. Wajib juga diisi **Kapan Terakhir
+  Menerima Bantuan** — cukup pilih **Bulan dan Tahun** lewat dropdown
+  (tidak perlu tanggal spesifik).
+- **Ada Anggota Keluarga dengan UMKM** (Ya/Tidak) — jika "Ya", wajib diisi
+  jumlah anggota pemilik UMKM, **dipisah Laki-laki dan Perempuan**. Sistem
+  otomatis menolak jika jumlah salah satu jenis kelamin melebihi jumlah
+  anggota keluarga laki-laki/perempuan yang tercatat di Data Keluarga.
 - **Ada Anggota Keluarga Penyandang Disabilitas** (individu dengan
   keterbatasan fisik, mental, intelektual, atau sensorik jangka panjang) —
   jika "Ya", wajib diisi jumlah orang dan jenis disabilitasnya.
 
 Semuanya dapat difilter di halaman Data Keluarga, ditampilkan di Dashboard
-(internal & publik), dan disertakan dalam file CSV hasil unduhan.
+(internal & publik) serta Repositori Data, dan disertakan dalam file CSV
+hasil unduhan.
 
 ## Status Keberadaan Keluarga
 
@@ -433,6 +477,11 @@ bantuan/UMKM per RT.
 (`COUNT`/`SUM`/`GROUP BY`) — tidak pernah mengambil kolom nama, NIK, nomor
 KK, atau alamat.
 
+**Unduh grafik sebagai gambar:** setiap grafik memiliki tombol unduh
+(ikon <i>download</i>) di pojok kanan atas kartu, untuk menyimpan grafik
+tersebut sebagai file PNG — berguna untuk ditempel ke laporan/presentasi
+tanpa perlu screenshot manual.
+
 ### Sumber Peta
 
 - `public/assets/mudunglaut_rt.geojson` — batas wilayah RT resmi Kelurahan
@@ -441,6 +490,8 @@ KK, atau alamat.
 - `public/assets/leaflet/` — library peta Leaflet.js di-*host* lokal (bukan
   CDN luar) supaya peta tetap berfungsi meski koneksi ke CDN pihak ketiga
   terblokir/lambat.
+- `public/assets/vendor/xlsx/` — library SheetJS (di-*host* lokal juga)
+  yang dipakai fitur "Unduh Excel" di halaman Repositori Data.
 
 ## Struktur Database (ringkas)
 
@@ -454,30 +505,55 @@ KK, atau alamat.
 
 ## Data Bangunan per RT
 
-Admin Kelurahan **dan Operator Kelurahan** dapat mencatat jumlah bangunan per
-RT lewat menu *Manajemen RT* (tombol Ubah pada tiap baris RT):
+Admin Kelurahan, Operator Kelurahan, **dan Ketua RT** dapat mencatat jumlah
+bangunan per RT:
 
-- Jumlah Bangunan Tempat Tinggal Terisi
+- Jumlah Bangunan Tempat Tinggal
+- Jumlah Bangunan Rumah Ibadah
+- Jumlah Bangunan Fasilitas Pendidikan
+- Jumlah Bangunan Fasilitas Kesehatan
 - Jumlah Bangunan Kosong
-- Jumlah Bangunan Khusus Usaha
-- Jumlah Bangunan Bukan Tempat Tinggal Non Usaha
 
 Data ini murni diisi manual (bukan dihitung otomatis dari data keluarga), dan
-ditampilkan sebagai kartu ringkasan serta grafik per RT baik di Dashboard
-internal maupun Dashboard Publik.
+ditampilkan sebagai kartu ringkasan serta grafik per RT di Dashboard internal,
+Dashboard Publik, dan Repositori Data.
 
-**Pembagian akses di halaman Manajemen RT:**
+**Pembagian akses:**
 
-| Aksi | Admin Kelurahan | Operator Kelurahan |
-|---|---|---|
-| Melihat data RT & bangunan | Ya | Ya |
-| Mengubah data bangunan | Ya | Ya |
-| Mengubah Nomor RT / Keterangan | Ya | Tidak |
-| Menambah RT baru | Ya | Tidak |
-| Menghapus RT | Ya | Tidak |
+| Aksi | Admin Kelurahan | Operator Kelurahan | Ketua RT |
+|---|---|---|---|
+| Melihat data RT & bangunan (semua RT) | Ya | Ya | Tidak |
+| Mengubah data bangunan | Ya | Ya | Hanya RT sendiri |
+| Mengubah Nomor RT / Keterangan | Ya | Tidak | Tidak |
+| Menambah RT baru | Ya | Tidak | Tidak |
+| Menghapus RT | Ya | Tidak | Tidak |
 
-Operator Kelurahan mengakses halaman ini lewat menu **"Data RT & Bangunan"**
-pada navbar (terpisah dari menu "Administrasi" yang khusus Admin).
+- Admin & Operator Kelurahan mengakses lewat menu **"Data RT & Bangunan"** /
+  *Administrasi > Manajemen RT* — melihat & mengelola seluruh RT.
+- **Ketua RT** mengakses lewat tombol **"Update Jumlah Bangunan"** di
+  halaman Data Keluarga (di sebelah tombol Tambah Keluarga) — hanya bisa
+  memperbarui data bangunan RT-nya sendiri lewat jendela pop-up sederhana,
+  tidak bisa melihat/mengubah RT lain.
+
+## Repositori Data
+
+Halaman khusus Admin & Operator Kelurahan (menu **"Repositori Data"**) berisi
+rekap resmi per RT dalam format tabel bergaya publikasi statistik (mirip
+tabel BPS), terdiri dari:
+
+- **Tabel 3.1** — Jumlah Penduduk menurut RT dan Jenis Kelamin
+- **Tabel 3.2** — Jumlah Kepala Keluarga dan Bangunan menurut RT
+- **Tabel 3.3** — Sex Ratio Penduduk menurut RT
+- **Tabel 3.4** — Jumlah Keluarga Penerima Bantuan, Pemilik UMKM, dan
+  Penyandang Disabilitas menurut RT
+
+Setiap tabel memiliki baris total "Mudung Laut" di bagian bawah, dan bisa
+dicetak/disimpan sebagai PDF lewat tombol "Cetak / Simpan PDF" (memakai
+fitur cetak bawaan browser).
+
+**Setiap tabel juga punya tombol "Unduh Excel"** tersendiri — mengunduh
+tabel tersebut sebagai file `.xlsx` yang bisa langsung dibuka di Excel,
+diproses sepenuhnya di browser (tidak perlu request tambahan ke server).
 
 ## Struktur Folder
 
@@ -495,6 +571,8 @@ sika-mudunglaut/
 │   ├── update_database_v9.sql        # Migrasi: deskripsi bantuan, disabilitas, status keberadaan
 │   ├── update_database_v10.sql       # Migrasi: data bangunan per RT
 │   ├── update_database_v11.sql       # Migrasi: login persisten
+│   ├── update_database_v12.sql       # Migrasi: jenis bantuan checkbox, UMKM per gender, 5 kategori bangunan
+│   ├── update_database_v13.sql       # Migrasi: tanggal terakhir menerima bantuan
 │   └── buat_user_ketua_rt.sql        # Buat/perbarui 9 akun Ketua RT resmi
 ├── includes/
 │   ├── config.php
@@ -511,6 +589,7 @@ sika-mudunglaut/
 │   ├── admin_users.php / admin_users_form.php
 │   ├── admin_rt.php
 │   ├── admin_fields.php
+│   ├── repositori_data.php    # Rekap resmi per RT (Admin/Operator)
 │   ├── template_import_keluarga.xlsx
 │   └── assets/
 │       ├── style.css

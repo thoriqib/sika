@@ -26,13 +26,14 @@ $totalBantuan  = $pdo->query("SELECT COUNT(*) c FROM keluarga k WHERE pernah_ban
 
 $bangunanWhere = $rtParam !== null ? " WHERE id = $rtParam" : "";
 $bangunan = $pdo->query("SELECT
-    COALESCE(SUM(jml_bangunan_tinggal_terisi),0) terisi,
-    COALESCE(SUM(jml_bangunan_tinggal_kosong),0) kosong,
-    COALESCE(SUM(jml_bangunan_khusus_usaha),0) usaha,
-    COALESCE(SUM(jml_bangunan_bukan_tinggal_non_usaha),0) non_usaha
+    COALESCE(SUM(jml_bangunan_tinggal),0) tinggal,
+    COALESCE(SUM(jml_bangunan_rumah_ibadah),0) ibadah,
+    COALESCE(SUM(jml_bangunan_fasilitas_pendidikan),0) pendidikan,
+    COALESCE(SUM(jml_bangunan_fasilitas_kesehatan),0) kesehatan,
+    COALESCE(SUM(jml_bangunan_kosong),0) kosong
     FROM rt $bangunanWhere")->fetch();
 $totalUmkm     = $pdo->query("SELECT COUNT(*) c FROM keluarga k WHERE ada_umkm='Ya' $adaWhere")->fetch()['c'];
-$totalAnggotaUmkm = $pdo->query("SELECT COALESCE(SUM(jumlah_anggota_umkm),0) c FROM keluarga k WHERE ada_umkm='Ya' $adaWhere")->fetch()['c'];
+$totalAnggotaUmkm = $pdo->query("SELECT COALESCE(SUM(jumlah_anggota_umkm_lk),0) + COALESCE(SUM(jumlah_anggota_umkm_pr),0) c FROM keluarga k WHERE ada_umkm='Ya' $adaWhere")->fetch()['c'];
 $totalDisabilitasKk = $pdo->query("SELECT COUNT(*) c FROM keluarga k WHERE ada_disabilitas='Ya' $adaWhere")->fetch()['c'];
 $totalDisabilitasOrang = $pdo->query("SELECT COALESCE(SUM(jumlah_disabilitas),0) c FROM keluarga k WHERE ada_disabilitas='Ya' $adaWhere")->fetch()['c'];
 
@@ -101,33 +102,41 @@ require __DIR__ . '/../includes/partials_header.php';
   <h6 class="text-muted mb-0 text-uppercase" style="letter-spacing:.03em">Data Bangunan<?= $rtLabelTerpilih ? ' &mdash; RT ' . e($rtLabelTerpilih) : '' ?></h6>
 </div>
 <div class="row g-3 mb-4">
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md">
     <div class="card border-0 shadow-sm h-100"><div class="card-body">
-      <div class="text-muted small">Tempat Tinggal Terisi</div>
-      <div class="fs-4 fw-bold text-teal"><?= number_format($bangunan['terisi']) ?></div>
+      <div class="text-muted small">Tempat Tinggal</div>
+      <div class="fs-4 fw-bold text-teal"><?= number_format($bangunan['tinggal']) ?></div>
     </div></div>
   </div>
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md">
+    <div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <div class="text-muted small">Rumah Ibadah</div>
+      <div class="fs-4 fw-bold" style="color:#6610f2"><?= number_format($bangunan['ibadah']) ?></div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md">
+    <div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <div class="text-muted small">Fasilitas Pendidikan</div>
+      <div class="fs-4 fw-bold" style="color:#0d6efd"><?= number_format($bangunan['pendidikan']) ?></div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md">
+    <div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <div class="text-muted small">Fasilitas Kesehatan</div>
+      <div class="fs-4 fw-bold" style="color:#fd7e14"><?= number_format($bangunan['kesehatan']) ?></div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md">
     <div class="card border-0 shadow-sm h-100"><div class="card-body">
       <div class="text-muted small">Bangunan Kosong</div>
       <div class="fs-4 fw-bold text-secondary"><?= number_format($bangunan['kosong']) ?></div>
     </div></div>
   </div>
-  <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm h-100"><div class="card-body">
-      <div class="text-muted small">Khusus Usaha</div>
-      <div class="fs-4 fw-bold" style="color:#fd7e14"><?= number_format($bangunan['usaha']) ?></div>
-    </div></div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm h-100"><div class="card-body">
-      <div class="text-muted small">Bukan Tinggal, Non Usaha</div>
-      <div class="fs-4 fw-bold text-muted"><?= number_format($bangunan['non_usaha']) ?></div>
-    </div></div>
-  </div>
 </div>
-<?php if (hasRole('admin_kelurahan')): ?>
+<?php if (hasRole(['admin_kelurahan','operator_kelurahan'])): ?>
 <div class="text-end mb-4"><a href="admin_rt.php" class="small"><i class="bi bi-pencil"></i> Kelola data bangunan per RT &raquo;</a></div>
+<?php elseif (hasRole('ketua_rt')): ?>
+<div class="text-end mb-4"><a href="keluarga_list.php" class="small"><i class="bi bi-pencil"></i> Update data bangunan RT saya &raquo;</a></div>
 <?php endif; ?>
 
 <div class="d-flex justify-content-between align-items-center mb-2">

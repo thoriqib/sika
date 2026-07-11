@@ -24,6 +24,7 @@
         <li class="nav-item"><a class="nav-link" href="public_dashboard.php" target="_blank"><i class="bi bi-bar-chart-line-fill"></i> Dashboard Publik</a></li>
         <?php if (hasRole(['operator_kelurahan'])): ?>
         <li class="nav-item"><a class="nav-link" href="admin_rt.php"><i class="bi bi-building"></i> Data RT &amp; Bangunan</a></li>
+        <li class="nav-item"><a class="nav-link" href="repositori_data.php"><i class="bi bi-archive-fill"></i> Repositori Data</a></li>
         <?php endif; ?>
         <?php if (hasRole(['admin_kelurahan'])): ?>
         <li class="nav-item dropdown">
@@ -32,6 +33,8 @@
             <li><a class="dropdown-item" href="admin_users.php">Manajemen Pengguna</a></li>
             <li><a class="dropdown-item" href="admin_rt.php">Manajemen RT</a></li>
             <li><a class="dropdown-item" href="admin_fields.php">Manajemen Variabel Tambahan</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="repositori_data.php">Repositori Data</a></li>
           </ul>
         </li>
         <?php endif; ?>

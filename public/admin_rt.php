@@ -1,20 +1,29 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
-requireRole(['admin_kelurahan', 'operator_kelurahan']);
+requireRole(['admin_kelurahan', 'operator_kelurahan', 'ketua_rt']);
 $pageTitle = 'Manajemen RT';
 $isAdmin = hasRole('admin_kelurahan');
+$isKetuaRt = hasRole('ketua_rt');
+
+// Ketua RT hanya boleh mengirim POST (update bangunan RT-nya sendiri) lewat
+// modal di halaman Data Keluarga — tidak boleh membuka halaman penuh ini.
+if ($isKetuaRt && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: keluarga_list.php'); exit;
+}
 
 function bangunanFields() {
     return [
-        'jml_bangunan_tinggal_terisi' => 'Jumlah Bangunan Tempat Tinggal Terisi',
-        'jml_bangunan_tinggal_kosong' => 'Jumlah Bangunan Kosong',
-        'jml_bangunan_khusus_usaha' => 'Jumlah Bangunan Khusus Usaha',
-        'jml_bangunan_bukan_tinggal_non_usaha' => 'Jumlah Bangunan Bukan Tempat Tinggal Non Usaha',
+        'jml_bangunan_tinggal' => 'Jumlah Bangunan Tempat Tinggal',
+        'jml_bangunan_rumah_ibadah' => 'Jumlah Bangunan Rumah Ibadah',
+        'jml_bangunan_fasilitas_pendidikan' => 'Jumlah Bangunan Fasilitas Pendidikan',
+        'jml_bangunan_fasilitas_kesehatan' => 'Jumlah Bangunan Fasilitas Kesehatan',
+        'jml_bangunan_kosong' => 'Jumlah Bangunan Kosong',
     ];
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = (int)($_POST['id'] ?? 0);
+    if ($isKetuaRt) $id = (int)currentUser()['rt_id']; // paksa RT sendiri, abaikan input lain
 
     $bangunan = [];
     foreach (array_keys(bangunanFields()) as $key) {
@@ -23,8 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($id > 0) {
         // ===== Mode Ubah =====
-        // Operator Kelurahan hanya boleh memperbarui data bangunan, tidak boleh
-        // mengubah Nomor RT / Keterangan (itu tetap wewenang Admin Kelurahan).
+        // Operator Kelurahan & Ketua RT hanya boleh memperbarui data bangunan,
+        // tidak boleh mengubah Nomor RT / Keterangan (wewenang Admin Kelurahan).
         if ($isAdmin) {
             $nomor = trim($_POST['nomor_rt'] ?? '');
             if ($nomor !== '' && ctype_digit($nomor)) $nomor = str_pad($nomor, 3, '0', STR_PAD_LEFT);
@@ -40,28 +49,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 header('Location: admin_rt.php'); exit;
             }
             $stmt = $pdo->prepare("UPDATE rt SET nomor_rt=?, keterangan=?,
-                jml_bangunan_tinggal_terisi=?, jml_bangunan_tinggal_kosong=?,
-                jml_bangunan_khusus_usaha=?, jml_bangunan_bukan_tinggal_non_usaha=?
+                jml_bangunan_tinggal=?, jml_bangunan_rumah_ibadah=?,
+                jml_bangunan_fasilitas_pendidikan=?, jml_bangunan_fasilitas_kesehatan=?, jml_bangunan_kosong=?
                 WHERE id=?");
             $stmt->execute([
                 $nomor, $ket ?: null,
-                $bangunan['jml_bangunan_tinggal_terisi'], $bangunan['jml_bangunan_tinggal_kosong'],
-                $bangunan['jml_bangunan_khusus_usaha'], $bangunan['jml_bangunan_bukan_tinggal_non_usaha'],
+                $bangunan['jml_bangunan_tinggal'], $bangunan['jml_bangunan_rumah_ibadah'],
+                $bangunan['jml_bangunan_fasilitas_pendidikan'], $bangunan['jml_bangunan_fasilitas_kesehatan'], $bangunan['jml_bangunan_kosong'],
                 $id,
             ]);
         } else {
-            // Operator: hanya kolom data bangunan yang diperbarui
+            // Operator / Ketua RT: hanya kolom data bangunan yang diperbarui
             $stmt = $pdo->prepare("UPDATE rt SET
-                jml_bangunan_tinggal_terisi=?, jml_bangunan_tinggal_kosong=?,
-                jml_bangunan_khusus_usaha=?, jml_bangunan_bukan_tinggal_non_usaha=?
+                jml_bangunan_tinggal=?, jml_bangunan_rumah_ibadah=?,
+                jml_bangunan_fasilitas_pendidikan=?, jml_bangunan_fasilitas_kesehatan=?, jml_bangunan_kosong=?
                 WHERE id=?");
             $stmt->execute([
-                $bangunan['jml_bangunan_tinggal_terisi'], $bangunan['jml_bangunan_tinggal_kosong'],
-                $bangunan['jml_bangunan_khusus_usaha'], $bangunan['jml_bangunan_bukan_tinggal_non_usaha'],
+                $bangunan['jml_bangunan_tinggal'], $bangunan['jml_bangunan_rumah_ibadah'],
+                $bangunan['jml_bangunan_fasilitas_pendidikan'], $bangunan['jml_bangunan_fasilitas_kesehatan'], $bangunan['jml_bangunan_kosong'],
                 $id,
             ]);
         }
-        $_SESSION['flash_success'] = 'Data RT berhasil diperbarui.';
+        $_SESSION['flash_success'] = 'Data bangunan RT berhasil diperbarui.';
     } elseif ($isAdmin) {
         // ===== Mode Tambah (khusus Admin Kelurahan) =====
         $nomor = trim($_POST['nomor_rt'] ?? '');
@@ -76,13 +85,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['flash_error'] = "RT $nomor sudah terdaftar sebelumnya. Tidak bisa menambahkan RT dengan nomor yang sama.";
             } else {
                 $stmt = $pdo->prepare("INSERT INTO rt (nomor_rt, keterangan,
-                    jml_bangunan_tinggal_terisi, jml_bangunan_tinggal_kosong,
-                    jml_bangunan_khusus_usaha, jml_bangunan_bukan_tinggal_non_usaha)
-                    VALUES (?,?,?,?,?,?)");
+                    jml_bangunan_tinggal, jml_bangunan_rumah_ibadah,
+                    jml_bangunan_fasilitas_pendidikan, jml_bangunan_fasilitas_kesehatan, jml_bangunan_kosong)
+                    VALUES (?,?,?,?,?,?,?)");
                 $stmt->execute([
                     $nomor, $ket ?: null,
-                    $bangunan['jml_bangunan_tinggal_terisi'], $bangunan['jml_bangunan_tinggal_kosong'],
-                    $bangunan['jml_bangunan_khusus_usaha'], $bangunan['jml_bangunan_bukan_tinggal_non_usaha'],
+                    $bangunan['jml_bangunan_tinggal'], $bangunan['jml_bangunan_rumah_ibadah'],
+                    $bangunan['jml_bangunan_fasilitas_pendidikan'], $bangunan['jml_bangunan_fasilitas_kesehatan'], $bangunan['jml_bangunan_kosong'],
                 ]);
                 $_SESSION['flash_success'] = 'RT berhasil ditambahkan.';
             }
@@ -90,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $_SESSION['flash_error'] = 'Anda tidak memiliki akses untuk menambah RT baru.';
     }
-    header('Location: admin_rt.php'); exit;
+    header('Location: ' . ($isKetuaRt ? 'keluarga_list.php' : 'admin_rt.php')); exit;
 }
 
 if (isset($_GET['delete'])) {
@@ -112,10 +121,11 @@ if (isset($_GET['delete'])) {
 
 $rtList = $pdo->query("SELECT r.*, (SELECT COUNT(*) FROM keluarga k WHERE k.rt_id=r.id) jml_keluarga FROM rt r ORDER BY r.nomor_rt")->fetchAll();
 $totalBangunan = $pdo->query("SELECT
-    COALESCE(SUM(jml_bangunan_tinggal_terisi),0) terisi,
-    COALESCE(SUM(jml_bangunan_tinggal_kosong),0) kosong,
-    COALESCE(SUM(jml_bangunan_khusus_usaha),0) usaha,
-    COALESCE(SUM(jml_bangunan_bukan_tinggal_non_usaha),0) non_usaha
+    COALESCE(SUM(jml_bangunan_tinggal),0) tinggal,
+    COALESCE(SUM(jml_bangunan_rumah_ibadah),0) ibadah,
+    COALESCE(SUM(jml_bangunan_fasilitas_pendidikan),0) pendidikan,
+    COALESCE(SUM(jml_bangunan_fasilitas_kesehatan),0) kesehatan,
+    COALESCE(SUM(jml_bangunan_kosong),0) kosong
     FROM rt")->fetch();
 
 require __DIR__ . '/../includes/partials_header.php';
@@ -130,28 +140,34 @@ require __DIR__ . '/../includes/partials_header.php';
 <?php endif; ?>
 
 <div class="row g-3 mb-3">
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md">
     <div class="card border-0 shadow-sm h-100"><div class="card-body">
-      <div class="text-muted small">Bangunan Tempat Tinggal Terisi</div>
-      <div class="fs-4 fw-bold text-teal"><?= number_format($totalBangunan['terisi']) ?></div>
+      <div class="text-muted small">Bangunan Tempat Tinggal</div>
+      <div class="fs-4 fw-bold text-teal"><?= number_format($totalBangunan['tinggal']) ?></div>
     </div></div>
   </div>
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md">
+    <div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <div class="text-muted small">Rumah Ibadah</div>
+      <div class="fs-4 fw-bold" style="color:#6610f2"><?= number_format($totalBangunan['ibadah']) ?></div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md">
+    <div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <div class="text-muted small">Fasilitas Pendidikan</div>
+      <div class="fs-4 fw-bold" style="color:#0d6efd"><?= number_format($totalBangunan['pendidikan']) ?></div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md">
+    <div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <div class="text-muted small">Fasilitas Kesehatan</div>
+      <div class="fs-4 fw-bold" style="color:#fd7e14"><?= number_format($totalBangunan['kesehatan']) ?></div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md">
     <div class="card border-0 shadow-sm h-100"><div class="card-body">
       <div class="text-muted small">Bangunan Kosong</div>
       <div class="fs-4 fw-bold text-secondary"><?= number_format($totalBangunan['kosong']) ?></div>
-    </div></div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm h-100"><div class="card-body">
-      <div class="text-muted small">Bangunan Khusus Usaha</div>
-      <div class="fs-4 fw-bold" style="color:#fd7e14"><?= number_format($totalBangunan['usaha']) ?></div>
-    </div></div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm h-100"><div class="card-body">
-      <div class="text-muted small">Bangunan Bukan Tinggal, Non Usaha</div>
-      <div class="fs-4 fw-bold text-muted"><?= number_format($totalBangunan['non_usaha']) ?></div>
     </div></div>
   </div>
 </div>
@@ -187,8 +203,8 @@ require __DIR__ . '/../includes/partials_header.php';
           <thead class="table-light">
             <tr>
               <th>RT</th><th>Keterangan</th><th class="text-center">Jml Keluarga</th>
-              <th class="text-center">Tinggal Terisi</th><th class="text-center">Kosong</th>
-              <th class="text-center">Khusus Usaha</th><th class="text-center">Non Usaha</th>
+              <th class="text-center">Tempat Tinggal</th><th class="text-center">Rumah Ibadah</th>
+              <th class="text-center">Fas. Pendidikan</th><th class="text-center">Fas. Kesehatan</th><th class="text-center">Kosong</th>
               <th class="text-end">Aksi</th>
             </tr>
           </thead>
@@ -198,10 +214,11 @@ require __DIR__ . '/../includes/partials_header.php';
             <td data-label="RT">RT <?= e($rt['nomor_rt']) ?></td>
             <td data-label="Keterangan"><?= e($rt['keterangan']) ?></td>
             <td data-label="Jml Keluarga" class="text-center"><?= (int)$rt['jml_keluarga'] ?></td>
-            <td data-label="Tinggal Terisi" class="text-center"><?= (int)$rt['jml_bangunan_tinggal_terisi'] ?></td>
-            <td data-label="Kosong" class="text-center"><?= (int)$rt['jml_bangunan_tinggal_kosong'] ?></td>
-            <td data-label="Khusus Usaha" class="text-center"><?= (int)$rt['jml_bangunan_khusus_usaha'] ?></td>
-            <td data-label="Non Usaha" class="text-center"><?= (int)$rt['jml_bangunan_bukan_tinggal_non_usaha'] ?></td>
+            <td data-label="Tempat Tinggal" class="text-center"><?= (int)$rt['jml_bangunan_tinggal'] ?></td>
+            <td data-label="Rumah Ibadah" class="text-center"><?= (int)$rt['jml_bangunan_rumah_ibadah'] ?></td>
+            <td data-label="Fas. Pendidikan" class="text-center"><?= (int)$rt['jml_bangunan_fasilitas_pendidikan'] ?></td>
+            <td data-label="Fas. Kesehatan" class="text-center"><?= (int)$rt['jml_bangunan_fasilitas_kesehatan'] ?></td>
+            <td data-label="Kosong" class="text-center"><?= (int)$rt['jml_bangunan_kosong'] ?></td>
             <td data-label="Aksi" class="text-end td-action">
               <button type="button" class="btn btn-sm btn-outline-secondary" title="Ubah"
                 onclick='bukaModalEdit(<?= json_encode($rt) ?>)'><i class="bi bi-pencil"></i></button>
@@ -211,7 +228,7 @@ require __DIR__ . '/../includes/partials_header.php';
             </td>
           </tr>
           <?php endforeach; ?>
-          <?php if (empty($rtList)): ?><tr><td colspan="8" class="text-center text-muted py-3">Belum ada data RT</td></tr><?php endif; ?>
+          <?php if (empty($rtList)): ?><tr><td colspan="9" class="text-center text-muted py-3">Belum ada data RT</td></tr><?php endif; ?>
           </tbody>
         </table>
       </div>
@@ -264,10 +281,11 @@ function bukaModalEdit(rt) {
   document.getElementById('editId').value = rt.id;
   document.getElementById('editNomorRt').value = rt.nomor_rt;
   document.getElementById('editKeterangan').value = rt.keterangan || '';
-  document.getElementById('edit_jml_bangunan_tinggal_terisi').value = rt.jml_bangunan_tinggal_terisi;
-  document.getElementById('edit_jml_bangunan_tinggal_kosong').value = rt.jml_bangunan_tinggal_kosong;
-  document.getElementById('edit_jml_bangunan_khusus_usaha').value = rt.jml_bangunan_khusus_usaha;
-  document.getElementById('edit_jml_bangunan_bukan_tinggal_non_usaha').value = rt.jml_bangunan_bukan_tinggal_non_usaha;
+  document.getElementById('edit_jml_bangunan_tinggal').value = rt.jml_bangunan_tinggal;
+  document.getElementById('edit_jml_bangunan_rumah_ibadah').value = rt.jml_bangunan_rumah_ibadah;
+  document.getElementById('edit_jml_bangunan_fasilitas_pendidikan').value = rt.jml_bangunan_fasilitas_pendidikan;
+  document.getElementById('edit_jml_bangunan_fasilitas_kesehatan').value = rt.jml_bangunan_fasilitas_kesehatan;
+  document.getElementById('edit_jml_bangunan_kosong').value = rt.jml_bangunan_kosong;
   new bootstrap.Modal(document.getElementById('modalEditRt')).show();
 }
 </script>

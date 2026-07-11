@@ -11,6 +11,20 @@ $keberadaanFilter = $_GET['keberadaan'] ?? '';
 
 $rtList = $pdo->query("SELECT * FROM rt ORDER BY nomor_rt")->fetchAll();
 
+$myRt = null;
+if (hasRole('ketua_rt')) {
+    $stmtMyRt = $pdo->prepare("SELECT * FROM rt WHERE id = ?");
+    $stmtMyRt->execute([currentUser()['rt_id']]);
+    $myRt = $stmtMyRt->fetch();
+}
+$bangunanFieldsList = [
+    'jml_bangunan_tinggal' => 'Jumlah Bangunan Tempat Tinggal',
+    'jml_bangunan_rumah_ibadah' => 'Jumlah Bangunan Rumah Ibadah',
+    'jml_bangunan_fasilitas_pendidikan' => 'Jumlah Bangunan Fasilitas Pendidikan',
+    'jml_bangunan_fasilitas_kesehatan' => 'Jumlah Bangunan Fasilitas Kesehatan',
+    'jml_bangunan_kosong' => 'Jumlah Bangunan Kosong',
+];
+
 $where = "WHERE 1=1";
 $params = [];
 
@@ -47,6 +61,15 @@ $totalRows = (int)$countStmt->fetch()['c'];
 
 $pg = paginationParams($totalRows, 25);
 
+// Deteksi apakah ada filter yang sedang aktif dipilih pengguna (RT tetap milik
+// Ketua RT tidak dihitung sebagai "filter" karena itu bukan pilihan, tapi
+// batasan akses bawaan perannya).
+$adaFilterAktif = $search !== ''
+    || ($rtFilter !== '' && !hasRole('ketua_rt'))
+    || in_array($bantuanFilter, ['Ya','Tidak'], true)
+    || in_array($umkmFilter, ['Ya','Tidak'], true)
+    || in_array($keberadaanFilter, ['Ada','Pindah'], true);
+
 $sql = "SELECT k.*, r.nomor_rt FROM keluarga k JOIN rt r ON r.id = k.rt_id $where ORDER BY k.nama_kepala_keluarga ASC LIMIT {$pg['perPage']} OFFSET {$pg['offset']}";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
@@ -58,10 +81,20 @@ require __DIR__ . '/../includes/partials_header.php';
   <h4 class="fw-semibold mb-0">Data Keluarga</h4>
   <div class="d-flex gap-2 flex-wrap">
     <?php if (hasRole(['operator_kelurahan','admin_kelurahan'])): ?>
-    <a href="keluarga_export.php?<?= http_build_query($_GET) ?>" class="btn btn-outline-secondary"><i class="bi bi-download"></i> Unduh Data</a>
+    <a href="keluarga_export.php?<?= http_build_query($_GET) ?>" class="btn btn-outline-secondary" title="<?= $adaFilterAktif ? 'Mengunduh data sesuai filter yang aktif saat ini' : 'Mengunduh seluruh data (tidak ada filter aktif)' ?>">
+      <i class="bi bi-download"></i> Unduh Data
+      <?php if ($adaFilterAktif): ?>
+        <span class="badge bg-teal ms-1">Terfilter &bull; <?= number_format($totalRows) ?></span>
+      <?php else: ?>
+        <span class="badge bg-secondary ms-1">Semua &bull; <?= number_format($totalRows) ?></span>
+      <?php endif; ?>
+    </a>
     <a href="keluarga_import.php" class="btn btn-outline-secondary"><i class="bi bi-upload"></i> Impor dari Excel</a>
     <?php endif; ?>
     <a href="keluarga_create.php" class="btn btn-teal"><i class="bi bi-plus-lg"></i> Tambah Keluarga</a>
+    <?php if (hasRole('ketua_rt') && $myRt): ?>
+    <button type="button" class="btn btn-outline-secondary" onclick="bukaModalBangunan()"><i class="bi bi-building"></i> Update Jumlah Bangunan</button>
+    <?php endif; ?>
   </div>
 </div>
 
@@ -136,7 +169,7 @@ require __DIR__ . '/../includes/partials_header.php';
           <td data-label="Jml Anggota" class="text-center"><?= (int)$row['jumlah_total'] ?> <span class="text-muted small">(L:<?= (int)$row['jumlah_lk'] ?>/P:<?= (int)$row['jumlah_pr'] ?>)</span></td>
           <td data-label="Keberadaan" class="text-center"><?= keberadaanKeluargaBadge($row['status_keberadaan']) ?></td>
           <td data-label="Bantuan" class="text-center"><?= $row['pernah_bantuan']==='Ya' ? '<span class="badge bg-success">Ya</span>' : '<span class="badge bg-secondary">Tidak</span>' ?></td>
-          <td data-label="UMKM" class="text-center"><?= $row['ada_umkm']==='Ya' ? '<span class="badge bg-success">Ya ('.(int)$row['jumlah_anggota_umkm'].')</span>' : '<span class="badge bg-secondary">Tidak</span>' ?></td>
+          <td data-label="UMKM" class="text-center"><?= $row['ada_umkm']==='Ya' ? '<span class="badge bg-success">Ya (L:'.(int)$row['jumlah_anggota_umkm_lk'].'/P:'.(int)$row['jumlah_anggota_umkm_pr'].')</span>' : '<span class="badge bg-secondary">Tidak</span>' ?></td>
           <td data-label="Terakhir Diupdate"><span class="text-muted small"><?= e(formatTanggalWaktu($row['updated_at'])) ?></span></td>
           <td data-label="Aksi" class="text-end td-action">
             <a href="keluarga_view.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-outline-primary" title="Lihat"><i class="bi bi-eye"></i></a>
@@ -153,4 +186,38 @@ require __DIR__ . '/../includes/partials_header.php';
   </div>
 </div>
 <?php renderPagination($totalRows, $pg, ['q' => $search, 'rt' => $rtFilter, 'bantuan' => $bantuanFilter, 'umkm' => $umkmFilter, 'keberadaan' => $keberadaanFilter]); ?>
+
+<?php if (hasRole('ketua_rt') && $myRt): ?>
+<!-- Modal Update Jumlah Bangunan (Ketua RT) -->
+<div class="modal fade" id="modalBangunan" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="admin_rt.php">
+        <input type="hidden" name="id" value="<?= (int)$myRt['id'] ?>">
+        <div class="modal-header">
+          <h5 class="modal-title">Update Jumlah Bangunan — RT <?= e($myRt['nomor_rt']) ?></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <?php foreach ($bangunanFieldsList as $key => $label): ?>
+            <div class="mb-2">
+              <label class="form-label small"><?= e($label) ?></label>
+              <input type="number" min="0" name="<?= $key ?>" class="form-control" value="<?= (int)$myRt[$key] ?>">
+            </div>
+          <?php endforeach; ?>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-teal">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+function bukaModalBangunan() {
+  new bootstrap.Modal(document.getElementById('modalBangunan')).show();
+}
+</script>
+<?php endif; ?>
 <?php require __DIR__ . '/../includes/partials_footer.php'; ?>

@@ -8,9 +8,9 @@ $COL = [
     'jumlah_lk' => 5, 'jumlah_pr' => 6,
     'nik' => 7, 'jenis_kelamin' => 8, 'tanggal_lahir' => 9, 'agama' => 10,
     'status_perkawinan' => 11, 'pendidikan' => 12, 'status_pekerjaan' => 13, 'pekerjaan' => 14,
-    'pernah_bantuan' => 15, 'deskripsi_bantuan' => 16,
-    'ada_umkm' => 17, 'jumlah_anggota_umkm' => 18,
-    'ada_disabilitas' => 19, 'jumlah_disabilitas' => 20, 'jenis_disabilitas' => 21,
+    'pernah_bantuan' => 15, 'jenis_bantuan' => 16, 'bulan_terakhir_bantuan' => 17, 'tahun_terakhir_bantuan' => 18, 'deskripsi_bantuan' => 19,
+    'ada_umkm' => 20, 'jumlah_umkm_lk' => 21, 'jumlah_umkm_pr' => 22,
+    'ada_disabilitas' => 23, 'jumlah_disabilitas' => 24, 'jenis_disabilitas' => 25,
 ];
 
 $rtList = $pdo->query("SELECT * FROM rt ORDER BY nomor_rt")->fetchAll();
@@ -87,9 +87,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file_excel'])) {
         $statusPekerjaan = xlsxCell($r, $COL['status_pekerjaan']);
         $pekerjaan = xlsxCell($r, $COL['pekerjaan']);
         $pernahBantuan = xlsxCell($r, $COL['pernah_bantuan']) ?: 'Tidak';
+        $jenisBantuanRaw = xlsxCell($r, $COL['jenis_bantuan']);
+        $bulanTerakhirBantuan = xlsxCell($r, $COL['bulan_terakhir_bantuan']);
+        $tahunTerakhirBantuan = xlsxCell($r, $COL['tahun_terakhir_bantuan']);
         $deskripsiBantuan = xlsxCell($r, $COL['deskripsi_bantuan']);
         $adaUmkm = xlsxCell($r, $COL['ada_umkm']) ?: 'Tidak';
-        $jumlahUmkm = xlsxCell($r, $COL['jumlah_anggota_umkm']);
+        $jumlahUmkmLk = xlsxCell($r, $COL['jumlah_umkm_lk']);
+        $jumlahUmkmPr = xlsxCell($r, $COL['jumlah_umkm_pr']);
         $adaDisabilitas = xlsxCell($r, $COL['ada_disabilitas']) ?: 'Tidak';
         $jumlahDisabilitas = xlsxCell($r, $COL['jumlah_disabilitas']);
         $jenisDisabilitas = xlsxCell($r, $COL['jenis_disabilitas']);
@@ -113,10 +117,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file_excel'])) {
         }
         if (!butuhDeskripsiPekerjaan($statusPekerjaan)) $pekerjaan = '';
         if (!in_array($pernahBantuan, ['Ya','Tidak'])) $errorsRow[] = $prefix . 'Pernah Terima Bantuan harus "Ya" atau "Tidak".';
-        if ($pernahBantuan === 'Ya' && $deskripsiBantuan === '') $errorsRow[] = $prefix . 'Deskripsi Bantuan wajib diisi jika Pernah Terima Bantuan = Ya.';
-        if ($pernahBantuan !== 'Ya') $deskripsiBantuan = '';
+        $jenisBantuanArr = [];
+        if ($pernahBantuan === 'Ya') {
+            $jenisBantuanArr = array_filter(array_map('trim', explode(',', $jenisBantuanRaw)));
+            $tidakDikenal = array_diff($jenisBantuanArr, pilihanJenisBantuan());
+            if (empty($jenisBantuanArr)) {
+                $errorsRow[] = $prefix . 'Jenis Bantuan wajib diisi jika Pernah Terima Bantuan = Ya (pisahkan dengan koma jika lebih dari satu).';
+            } elseif (!empty($tidakDikenal)) {
+                $errorsRow[] = $prefix . 'Jenis Bantuan tidak dikenal: ' . implode(', ', $tidakDikenal) . '. Nilai yang diperbolehkan: ' . implode(', ', pilihanJenisBantuan()) . '.';
+            }
+            if (in_array('Lainnya', $jenisBantuanArr) && $deskripsiBantuan === '') $errorsRow[] = $prefix . 'Deskripsi Bantuan wajib diisi jika Jenis Bantuan memuat "Lainnya".';
+            if ($bulanTerakhirBantuan === '' || $tahunTerakhirBantuan === '') {
+                $errorsRow[] = $prefix . 'Bulan & Tahun Terakhir Menerima Bantuan wajib diisi jika Pernah Terima Bantuan = Ya.';
+            } elseif (bulanTahunKeSql($bulanTerakhirBantuan, $tahunTerakhirBantuan) === null) {
+                $errorsRow[] = $prefix . 'Bulan/Tahun Terakhir Menerima Bantuan tidak valid (Bulan harus 1-12, Tahun 4 digit).';
+            }
+        }
+        if ($pernahBantuan !== 'Ya' || !in_array('Lainnya', $jenisBantuanArr)) $deskripsiBantuan = '';
         if (!in_array($adaUmkm, ['Ya','Tidak'])) $errorsRow[] = $prefix . 'Ada UMKM harus "Ya" atau "Tidak".';
-        if ($adaUmkm === 'Ya' && (!is_numeric($jumlahUmkm) || (int)$jumlahUmkm < 1)) $errorsRow[] = $prefix . 'Jumlah Anggota UMKM wajib diisi (minimal 1) jika Ada UMKM = Ya.';
+        if ($adaUmkm === 'Ya') {
+            if (!is_numeric($jumlahUmkmLk)) $jumlahUmkmLk = 0;
+            if (!is_numeric($jumlahUmkmPr)) $jumlahUmkmPr = 0;
+            if (((int)$jumlahUmkmLk + (int)$jumlahUmkmPr) < 1) $errorsRow[] = $prefix . 'Jumlah Anggota UMKM (laki-laki/perempuan) wajib diisi, minimal 1 orang jika Ada UMKM = Ya.';
+            if ((int)$jumlahUmkmLk > (int)$jumlahLk) $errorsRow[] = $prefix . 'Jumlah Anggota UMKM Laki-laki tidak boleh melebihi Jumlah Laki-laki keluarga.';
+            if ((int)$jumlahUmkmPr > (int)$jumlahPr) $errorsRow[] = $prefix . 'Jumlah Anggota UMKM Perempuan tidak boleh melebihi Jumlah Perempuan keluarga.';
+        } else {
+            $jumlahUmkmLk = 0; $jumlahUmkmPr = 0;
+        }
         if (!in_array($adaDisabilitas, ['Ya','Tidak'])) $errorsRow[] = $prefix . 'Ada Penyandang Disabilitas harus "Ya" atau "Tidak".';
         if ($adaDisabilitas === 'Ya') {
             if (!is_numeric($jumlahDisabilitas) || (int)$jumlahDisabilitas < 1) $errorsRow[] = $prefix . 'Jumlah Penyandang Disabilitas wajib diisi (minimal 1) jika Ya.';
@@ -159,14 +186,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file_excel'])) {
                  nik_kepala_keluarga, jenis_kelamin_kepala_keluarga, tanggal_lahir_kepala_keluarga,
                  agama_kepala_keluarga, status_perkawinan_kepala_keluarga, pendidikan_kepala_keluarga,
                  status_pekerjaan_kepala_keluarga, pekerjaan_kepala_keluarga,
-                 pernah_bantuan, deskripsi_bantuan, ada_umkm, jumlah_anggota_umkm,
+                 pernah_bantuan, jenis_bantuan, tanggal_terakhir_bantuan, deskripsi_bantuan, ada_umkm, jumlah_anggota_umkm_lk, jumlah_anggota_umkm_pr,
                  ada_disabilitas, jumlah_disabilitas, jenis_disabilitas, created_by, updated_by)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
             $stmt->execute([
                 $namaKk, $alamat, $rtByNomor[$rtNomor], $nomorKk, $statusKeberadaan, (int)$jumlahLk, (int)$jumlahPr, (int)$jumlahLk + (int)$jumlahPr,
                 $nik, $jk, tanggalKeSql($tglLahir), $agama ?: null, $statusKawin ?: null, $pendidikan ?: null,
                 $statusPekerjaan, $pekerjaan ?: null,
-                $pernahBantuan, $deskripsiBantuan ?: null, $adaUmkm, $adaUmkm === 'Ya' ? (int)$jumlahUmkm : null,
+                $pernahBantuan, $pernahBantuan === 'Ya' ? implode(',', $jenisBantuanArr) : null,
+                $pernahBantuan === 'Ya' ? bulanTahunKeSql($bulanTerakhirBantuan, $tahunTerakhirBantuan) : null, $deskripsiBantuan ?: null,
+                $adaUmkm, $adaUmkm === 'Ya' ? (int)$jumlahUmkmLk : null, $adaUmkm === 'Ya' ? (int)$jumlahUmkmPr : null,
                 $adaDisabilitas, $adaDisabilitas === 'Ya' ? (int)$jumlahDisabilitas : null, $jenisDisabilitas ?: null,
                 currentUser()['id'], currentUser()['id'],
             ]);

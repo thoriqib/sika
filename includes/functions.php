@@ -128,6 +128,27 @@ function tanggalUntukForm($ymd) {
     return date('d/m/Y', $ts);
 }
 
+// ===================== Bulan/Tahun saja (mis. Kapan Terakhir Menerima Bantuan) =====================
+function namaBulanIndonesia($bulan) {
+    $nama = ['', 'Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    return $nama[(int)$bulan] ?? '';
+}
+
+// Gabungkan bulan (1-12) + tahun menjadi tanggal SQL (selalu tanggal 01)
+function bulanTahunKeSql($bulan, $tahun) {
+    $bulan = (int)$bulan; $tahun = (int)$tahun;
+    if ($bulan < 1 || $bulan > 12 || $tahun < 2000 || $tahun > 2100) return null;
+    return sprintf('%04d-%02d-01', $tahun, $bulan);
+}
+
+// Format tanggal (yyyy-mm-dd) jadi "Bulan Tahun", mis. "Juni 2026"
+function formatBulanTahun($ymd) {
+    if (!$ymd) return '-';
+    $ts = strtotime($ymd);
+    if (!$ts) return '-';
+    return namaBulanIndonesia((int)date('n', $ts)) . ' ' . date('Y', $ts);
+}
+
 function formatRupiah($angka) {
     return 'Rp ' . number_format((float)$angka, 0, ',', '.');
 }
@@ -260,6 +281,26 @@ function pilihanStatusPekerjaan() {
         'Tidak Bekerja',
         'Lainnya',
     ];
+}
+
+// Jenis bantuan pemerintah (checkbox, bisa dipilih lebih dari satu)
+function pilihanJenisBantuan() {
+    return ['PKH','BPNT','PIP','KIP','BPJS PBI','BLT','Bedah Rumah','Lainnya'];
+}
+
+// Ubah daftar jenis bantuan (disimpan dipisah koma di DB) jadi teks tampilan
+function formatJenisBantuan($jenisBantuanCsv, $deskripsiLainnya = '') {
+    if (!$jenisBantuanCsv) return '-';
+    $list = array_filter(array_map('trim', explode(',', $jenisBantuanCsv)));
+    $out = [];
+    foreach ($list as $item) {
+        if ($item === 'Lainnya' && $deskripsiLainnya) {
+            $out[] = 'Lainnya (' . $deskripsiLainnya . ')';
+        } else {
+            $out[] = $item;
+        }
+    }
+    return $out ? implode(', ', $out) : '-';
 }
 
 // Status pekerjaan yang TIDAK memerlukan deskripsi pekerjaan tambahan

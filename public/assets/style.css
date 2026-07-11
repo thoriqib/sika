@@ -10,6 +10,7 @@ body { background-color: #f4f7f6; font-family: 'Segoe UI', system-ui, sans-serif
 .btn-outline-teal { border: 1px solid var(--teal); color: var(--teal); background: #fff; }
 .btn-check:checked + .btn-outline-teal, .btn-outline-teal:hover { background-color: var(--teal); border-color: var(--teal); color: #fff; }
 .text-teal { color: var(--teal); }
+.bg-teal { background-color: var(--teal) !important; color: #fff; }
 .card { border-radius: 12px; }
 .stat-card { border-left: 4px solid var(--teal); }
 .login-body { min-height: 100vh; background: linear-gradient(135deg, var(--teal-dark), var(--teal)); }

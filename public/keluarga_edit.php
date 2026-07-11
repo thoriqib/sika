@@ -30,9 +30,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pekerjaan = trim($_POST['pekerjaan_kepala_keluarga'] ?? '');
 
     $pernah_bantuan = ($_POST['pernah_bantuan'] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak';
+    $jenis_bantuan_arr = array_intersect($_POST['jenis_bantuan'] ?? [], pilihanJenisBantuan());
+    $bulan_terakhir_bantuan = trim($_POST['bulan_terakhir_bantuan'] ?? '');
+    $tahun_terakhir_bantuan = trim($_POST['tahun_terakhir_bantuan'] ?? '');
     $deskripsi_bantuan = trim($_POST['deskripsi_bantuan'] ?? '');
     $ada_umkm = ($_POST['ada_umkm'] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak';
-    $jumlah_anggota_umkm = $ada_umkm === 'Ya' ? (int)($_POST['jumlah_anggota_umkm'] ?? 0) : null;
+    $jumlah_umkm_lk = $ada_umkm === 'Ya' ? (int)($_POST['jumlah_anggota_umkm_lk'] ?? 0) : null;
+    $jumlah_umkm_pr = $ada_umkm === 'Ya' ? (int)($_POST['jumlah_anggota_umkm_pr'] ?? 0) : null;
     $ada_disabilitas = ($_POST['ada_disabilitas'] ?? 'Tidak') === 'Ya' ? 'Ya' : 'Tidak';
     $jumlah_disabilitas = $ada_disabilitas === 'Ya' ? (int)($_POST['jumlah_disabilitas'] ?? 0) : null;
     $jenis_disabilitas = $ada_disabilitas === 'Ya' ? trim($_POST['jenis_disabilitas'] ?? '') : null;
@@ -54,9 +58,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Deskripsi pekerjaan Kepala Keluarga wajib diisi untuk status pekerjaan yang dipilih.';
     }
     if (!butuhDeskripsiPekerjaan($status_pekerjaan)) $pekerjaan = null;
-    if ($ada_umkm === 'Ya' && $jumlah_anggota_umkm < 1) $errors[] = 'Jumlah anggota keluarga pemilik UMKM wajib diisi (minimal 1) jika ada UMKM.';
-    if ($pernah_bantuan === 'Ya' && $deskripsi_bantuan === '') $errors[] = 'Deskripsi bantuan wajib diisi jika keluarga pernah menerima bantuan.';
-    if ($pernah_bantuan !== 'Ya') $deskripsi_bantuan = null; else $deskripsi_bantuan = $deskripsi_bantuan ?: null;
+    if ($ada_umkm === 'Ya' && ($jumlah_umkm_lk + $jumlah_umkm_pr) < 1) $errors[] = 'Jumlah anggota keluarga pemilik UMKM (laki-laki/perempuan) wajib diisi, minimal 1 orang.';
+    if ($ada_umkm === 'Ya' && $jumlah_umkm_lk > $jumlah_lk) $errors[] = 'Jumlah anggota UMKM laki-laki tidak boleh melebihi jumlah anggota keluarga laki-laki.';
+    if ($ada_umkm === 'Ya' && $jumlah_umkm_pr > $jumlah_pr) $errors[] = 'Jumlah anggota UMKM perempuan tidak boleh melebihi jumlah anggota keluarga perempuan.';
+    if ($pernah_bantuan === 'Ya' && empty($jenis_bantuan_arr)) $errors[] = 'Pilih minimal satu jenis bantuan yang pernah diterima.';
+    if ($pernah_bantuan === 'Ya' && in_array('Lainnya', $jenis_bantuan_arr) && $deskripsi_bantuan === '') $errors[] = 'Deskripsi bantuan wajib diisi jika memilih jenis bantuan "Lainnya".';
+    $jenis_bantuan_csv = ($pernah_bantuan === 'Ya' && $jenis_bantuan_arr) ? implode(',', $jenis_bantuan_arr) : null;
+    if ($pernah_bantuan !== 'Ya' || !in_array('Lainnya', $jenis_bantuan_arr)) $deskripsi_bantuan = null; else $deskripsi_bantuan = $deskripsi_bantuan ?: null;
+    $tgl_terakhir_bantuan_sql = null;
+    if ($pernah_bantuan === 'Ya') {
+        if ($bulan_terakhir_bantuan === '' || $tahun_terakhir_bantuan === '') {
+            $errors[] = 'Kapan Terakhir Menerima Bantuan (bulan & tahun) wajib diisi.';
+        } elseif (bulanTahunKeSql($bulan_terakhir_bantuan, $tahun_terakhir_bantuan) === null) {
+            $errors[] = 'Kapan Terakhir Menerima Bantuan tidak valid.';
+        } else {
+            $tgl_terakhir_bantuan_sql = bulanTahunKeSql($bulan_terakhir_bantuan, $tahun_terakhir_bantuan);
+        }
+    }
     if ($ada_disabilitas === 'Ya') {
         if ($jumlah_disabilitas < 1) $errors[] = 'Jumlah anggota keluarga penyandang disabilitas wajib diisi (minimal 1).';
         if ($jenis_disabilitas === '') $errors[] = 'Jenis disabilitas wajib diisi.';
@@ -78,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             nik_kepala_keluarga=?, jenis_kelamin_kepala_keluarga=?, tanggal_lahir_kepala_keluarga=?,
             agama_kepala_keluarga=?, status_perkawinan_kepala_keluarga=?, pendidikan_kepala_keluarga=?,
             status_pekerjaan_kepala_keluarga=?, pekerjaan_kepala_keluarga=?,
-            pernah_bantuan=?, deskripsi_bantuan=?, ada_umkm=?, jumlah_anggota_umkm=?,
+            pernah_bantuan=?, jenis_bantuan=?, tanggal_terakhir_bantuan=?, deskripsi_bantuan=?, ada_umkm=?, jumlah_anggota_umkm_lk=?, jumlah_anggota_umkm_pr=?,
             ada_disabilitas=?, jumlah_disabilitas=?, jenis_disabilitas=?,
             status_keberadaan=?, updated_by=?
             WHERE id=?");
@@ -86,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $nama, $alamat, $rt_id, $nomor_kk, $jumlah_lk, $jumlah_pr, $jumlah_total,
             $nik, $jk, parseTanggalForm($tgl), $agama, $status_kawin, $pendidikan,
             $status_pekerjaan, $pekerjaan,
-            $pernah_bantuan, $deskripsi_bantuan, $ada_umkm, $jumlah_anggota_umkm,
+            $pernah_bantuan, $jenis_bantuan_csv, $tgl_terakhir_bantuan_sql, $deskripsi_bantuan, $ada_umkm, $jumlah_umkm_lk, $jumlah_umkm_pr,
             $ada_disabilitas, $jumlah_disabilitas, $jenis_disabilitas,
             $status_keberadaan, currentUser()['id'], $id,
         ]);
@@ -102,6 +120,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $tglLahirKkDisplay = ($_SERVER['REQUEST_METHOD'] === 'POST')
     ? ($_POST['tanggal_lahir_kepala_keluarga'] ?? '')
     : tanggalUntukForm($keluarga['tanggal_lahir_kepala_keluarga']);
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $bulanTerakhirBantuanDisplay = $_POST['bulan_terakhir_bantuan'] ?? '';
+    $tahunTerakhirBantuanDisplay = $_POST['tahun_terakhir_bantuan'] ?? '';
+} else {
+    $tsBantuan = !empty($keluarga['tanggal_terakhir_bantuan']) ? strtotime($keluarga['tanggal_terakhir_bantuan']) : false;
+    $bulanTerakhirBantuanDisplay = $tsBantuan ? (int)date('n', $tsBantuan) : '';
+    $tahunTerakhirBantuanDisplay = $tsBantuan ? (int)date('Y', $tsBantuan) : '';
+}
 
 require __DIR__ . '/../includes/partials_header.php';
 ?>
@@ -268,9 +294,37 @@ require __DIR__ . '/../includes/partials_header.php';
             <label class="btn btn-outline-teal" for="bantuanTidak">Tidak</label>
           </div>
         </div>
-        <div class="col-md-8" id="wrapDeskripsiBantuan">
-          <label class="form-label">Deskripsi Bantuan<span id="markDeskripsiBantuan"></span></label>
-          <input type="text" name="deskripsi_bantuan" id="inputDeskripsiBantuan" class="form-control" value="<?= e($keluarga['deskripsi_bantuan']) ?>">
+        <div class="col-md-8" id="wrapJenisBantuan">
+          <label class="form-label d-block">Jenis Bantuan yang Diterima<span id="markJenisBantuan"></span></label>
+          <div class="d-flex flex-wrap gap-3">
+            <?php $selectedBantuan = array_map('trim', explode(',', $keluarga['jenis_bantuan'] ?? '')); foreach (pilihanJenisBantuan() as $jb): $cbId = 'jb_' . preg_replace('/[^a-zA-Z0-9]/', '', $jb); ?>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="jenis_bantuan[]" value="<?= e($jb) ?>" id="<?= $cbId ?>" <?= in_array($jb, $selectedBantuan) ? 'checked' : '' ?> <?= $jb === 'Lainnya' ? 'onchange="toggleDeskripsiBantuan()"' : '' ?>>
+                <label class="form-check-label" for="<?= $cbId ?>"><?= e($jb) ?></label>
+              </div>
+            <?php endforeach; ?>
+          </div>
+          <div class="mt-2" id="wrapTglTerakhirBantuan">
+            <label class="form-label d-block">Kapan Terakhir Menerima Bantuan?<span id="markTglTerakhirBantuan"></span></label>
+            <div class="d-flex gap-2">
+              <select name="bulan_terakhir_bantuan" id="bulanTerakhirBantuan" class="form-select" style="max-width:160px">
+                <option value="">Bulan</option>
+                <?php foreach (range(1,12) as $bl): ?>
+                  <option value="<?= $bl ?>" <?= ($bulanTerakhirBantuanDisplay == $bl) ? 'selected' : '' ?>><?= namaBulanIndonesia($bl) ?></option>
+                <?php endforeach; ?>
+              </select>
+              <select name="tahun_terakhir_bantuan" id="tahunTerakhirBantuan" class="form-select" style="max-width:130px">
+                <option value="">Tahun</option>
+                <?php $tahunSekarang = (int)date('Y'); foreach (range($tahunSekarang, $tahunSekarang - 9) as $th): ?>
+                  <option value="<?= $th ?>" <?= ($tahunTerakhirBantuanDisplay == $th) ? 'selected' : '' ?>><?= $th ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+          </div>
+          <div class="mt-2" id="wrapDeskripsiBantuan">
+            <label class="form-label">Deskripsi Bantuan "Lainnya"<span id="markDeskripsiBantuan"></span></label>
+            <input type="text" name="deskripsi_bantuan" id="inputDeskripsiBantuan" class="form-control" value="<?= e($keluarga['deskripsi_bantuan']) ?>">
+          </div>
         </div>
 
         <div class="col-md-4">
@@ -283,8 +337,18 @@ require __DIR__ . '/../includes/partials_header.php';
           </div>
         </div>
         <div class="col-md-4" id="wrapJumlahUmkm">
-          <label class="form-label">Berapa Anggota Keluarga yang Memiliki UMKM?<span id="markJumlahUmkm"></span></label>
-          <input type="number" min="1" name="jumlah_anggota_umkm" id="inputJumlahUmkm" class="form-control" value="<?= e($keluarga['jumlah_anggota_umkm']) ?>">
+          <label class="form-label d-block">Berapa Anggota Keluarga yang Memiliki UMKM?<span id="markJumlahUmkm"></span></label>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label small text-muted mb-1">Laki-laki</label>
+              <input type="number" min="0" name="jumlah_anggota_umkm_lk" id="inputJumlahUmkmLk" class="form-control" value="<?= e($keluarga['jumlah_anggota_umkm_lk'] ?? '0') ?>">
+            </div>
+            <div class="col-6">
+              <label class="form-label small text-muted mb-1">Perempuan</label>
+              <input type="number" min="0" name="jumlah_anggota_umkm_pr" id="inputJumlahUmkmPr" class="form-control" value="<?= e($keluarga['jumlah_anggota_umkm_pr'] ?? '0') ?>">
+            </div>
+          </div>
+          <div class="form-text">Tidak boleh melebihi jumlah anggota keluarga laki-laki/perempuan pada Data Keluarga.</div>
         </div>
 
         <div class="col-md-4">
@@ -354,25 +418,56 @@ function toggleDeskripsiPekerjaan() {
 document.getElementById('selStatusPekerjaan').addEventListener('change', toggleDeskripsiPekerjaan);
 toggleDeskripsiPekerjaan();
 
-function toggleDeskripsiBantuan() {
+function toggleWrapJenisBantuan() {
   const ya = document.getElementById('bantuanYa').checked;
-  document.getElementById('wrapDeskripsiBantuan').style.display = ya ? 'block' : 'none';
-  document.getElementById('inputDeskripsiBantuan').required = ya;
-  document.getElementById('markDeskripsiBantuan').innerHTML = ya ? ' <span class="text-danger">*</span>' : '';
+  document.getElementById('wrapJenisBantuan').style.display = ya ? 'block' : 'none';
+  document.getElementById('markJenisBantuan').innerHTML = ya ? ' <span class="text-danger">*</span>' : '';
+  document.getElementById('markTglTerakhirBantuan').innerHTML = ya ? ' <span class="text-danger">*</span>' : '';
+  document.getElementById('bulanTerakhirBantuan').required = ya;
+  document.getElementById('tahunTerakhirBantuan').required = ya;
+  if (!ya) {
+    document.querySelectorAll('#wrapJenisBantuan input[type=checkbox]').forEach(cb => cb.checked = false);
+    document.getElementById('inputDeskripsiBantuan').value = '';
+    document.getElementById('bulanTerakhirBantuan').value = '';
+    document.getElementById('tahunTerakhirBantuan').value = '';
+  }
+  toggleDeskripsiBantuan();
 }
-document.getElementById('bantuanYa').addEventListener('change', toggleDeskripsiBantuan);
-document.getElementById('bantuanTidak').addEventListener('change', toggleDeskripsiBantuan);
+document.getElementById('bantuanYa').addEventListener('change', toggleWrapJenisBantuan);
+document.getElementById('bantuanTidak').addEventListener('change', toggleWrapJenisBantuan);
+toggleWrapJenisBantuan();
+
+function toggleDeskripsiBantuan() {
+  const lainnyaChecked = document.getElementById('jb_Lainnya') && document.getElementById('jb_Lainnya').checked;
+  const tampil = document.getElementById('bantuanYa').checked && lainnyaChecked;
+  document.getElementById('wrapDeskripsiBantuan').style.display = tampil ? 'block' : 'none';
+  document.getElementById('inputDeskripsiBantuan').required = tampil;
+  document.getElementById('markDeskripsiBantuan').innerHTML = tampil ? ' <span class="text-danger">*</span>' : '';
+  if (!tampil) document.getElementById('inputDeskripsiBantuan').value = '';
+}
 toggleDeskripsiBantuan();
 
 function toggleJumlahUmkm() {
   const ya = document.getElementById('umkmYa').checked;
   document.getElementById('wrapJumlahUmkm').style.display = ya ? 'block' : 'none';
-  document.getElementById('inputJumlahUmkm').required = ya;
+  document.getElementById('inputJumlahUmkmLk').required = ya;
+  document.getElementById('inputJumlahUmkmPr').required = ya;
   document.getElementById('markJumlahUmkm').innerHTML = ya ? ' <span class="text-danger">*</span>' : '';
+  if (!ya) { document.getElementById('inputJumlahUmkmLk').value = '0'; document.getElementById('inputJumlahUmkmPr').value = '0'; }
 }
 document.getElementById('umkmYa').addEventListener('change', toggleJumlahUmkm);
 document.getElementById('umkmTidak').addEventListener('change', toggleJumlahUmkm);
 toggleJumlahUmkm();
+
+function batasiJumlahUmkm() {
+  const lk = parseInt(document.getElementById('jumlahLk').value) || 0;
+  const pr = parseInt(document.getElementById('jumlahPr').value) || 0;
+  document.getElementById('inputJumlahUmkmLk').max = lk;
+  document.getElementById('inputJumlahUmkmPr').max = pr;
+}
+document.getElementById('jumlahLk').addEventListener('input', batasiJumlahUmkm);
+document.getElementById('jumlahPr').addEventListener('input', batasiJumlahUmkm);
+batasiJumlahUmkm();
 
 function toggleDisabilitas() {
   const ya = document.getElementById('disabilitasYa').checked;

@@ -8,10 +8,11 @@ $pageTitle = 'Dashboard Publik';
 $rtList = $pdo->query("SELECT * FROM rt ORDER BY nomor_rt")->fetchAll();
 
 $bangunanTotal = $pdo->query("SELECT
-    COALESCE(SUM(jml_bangunan_tinggal_terisi),0) terisi,
-    COALESCE(SUM(jml_bangunan_tinggal_kosong),0) kosong,
-    COALESCE(SUM(jml_bangunan_khusus_usaha),0) usaha,
-    COALESCE(SUM(jml_bangunan_bukan_tinggal_non_usaha),0) non_usaha
+    COALESCE(SUM(jml_bangunan_tinggal),0) tinggal,
+    COALESCE(SUM(jml_bangunan_rumah_ibadah),0) ibadah,
+    COALESCE(SUM(jml_bangunan_fasilitas_pendidikan),0) pendidikan,
+    COALESCE(SUM(jml_bangunan_fasilitas_kesehatan),0) kesehatan,
+    COALESCE(SUM(jml_bangunan_kosong),0) kosong
     FROM rt")->fetch();
 
 // ===================== Ringkasan Umum =====================
@@ -35,8 +36,8 @@ $perRt = $pdo->query("
            COALESCE(SUM(k.jumlah_total),0) jml_penduduk,
            COALESCE(SUM(CASE WHEN k.pernah_bantuan='Ya' THEN 1 ELSE 0 END),0) jml_bantuan,
            COALESCE(SUM(CASE WHEN k.ada_umkm='Ya' THEN 1 ELSE 0 END),0) jml_umkm,
-           r.jml_bangunan_tinggal_terisi, r.jml_bangunan_tinggal_kosong,
-           r.jml_bangunan_khusus_usaha, r.jml_bangunan_bukan_tinggal_non_usaha
+           r.jml_bangunan_tinggal, r.jml_bangunan_rumah_ibadah,
+           r.jml_bangunan_fasilitas_pendidikan, r.jml_bangunan_fasilitas_kesehatan, r.jml_bangunan_kosong
     FROM rt r LEFT JOIN keluarga k ON k.rt_id = r.id AND k.status_keberadaan = 'Ada'
     GROUP BY r.id ORDER BY r.nomor_rt
 ")->fetchAll();
@@ -48,8 +49,9 @@ foreach ($perRt as $r) {
     $mapPoints[] = [
         'rt' => $r['nomor_rt'], 'keluarga' => (int)$r['jml_keluarga'], 'penduduk' => (int)$r['jml_penduduk'],
         'persen_bantuan' => $persenBantuanRt, 'persen_umkm' => $persenUmkmRt,
-        'bangunan_terisi' => (int)$r['jml_bangunan_tinggal_terisi'], 'bangunan_kosong' => (int)$r['jml_bangunan_tinggal_kosong'],
-        'bangunan_usaha' => (int)$r['jml_bangunan_khusus_usaha'], 'bangunan_non_usaha' => (int)$r['jml_bangunan_bukan_tinggal_non_usaha'],
+        'bangunan_tinggal' => (int)$r['jml_bangunan_tinggal'], 'bangunan_ibadah' => (int)$r['jml_bangunan_rumah_ibadah'],
+        'bangunan_pendidikan' => (int)$r['jml_bangunan_fasilitas_pendidikan'], 'bangunan_kesehatan' => (int)$r['jml_bangunan_fasilitas_kesehatan'],
+        'bangunan_kosong' => (int)$r['jml_bangunan_kosong'],
         'ada_data' => (int)$r['jml_keluarga'] > 0,
     ];
 }
@@ -174,28 +176,34 @@ require __DIR__ . '/../includes/partials_header.php';
 
 <div class="pub-section-title"><i class="bi bi-building"></i> Data Bangunan</div>
 <div class="row g-3 mb-2">
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md">
     <div class="card pub-kpi border-0 shadow-sm h-100"><div class="card-body">
-      <div class="text-muted small">Tempat Tinggal Terisi</div>
-      <div class="fs-4 fw-bold text-teal"><?= number_format($bangunanTotal['terisi']) ?></div>
+      <div class="text-muted small">Tempat Tinggal</div>
+      <div class="fs-4 fw-bold text-teal"><?= number_format($bangunanTotal['tinggal']) ?></div>
     </div></div>
   </div>
-  <div class="col-6 col-md-3">
+  <div class="col-6 col-md">
+    <div class="card pub-kpi border-0 shadow-sm h-100"><div class="card-body">
+      <div class="text-muted small">Rumah Ibadah</div>
+      <div class="fs-4 fw-bold" style="color:#6610f2"><?= number_format($bangunanTotal['ibadah']) ?></div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md">
+    <div class="card pub-kpi border-0 shadow-sm h-100"><div class="card-body">
+      <div class="text-muted small">Fasilitas Pendidikan</div>
+      <div class="fs-4 fw-bold" style="color:#0d6efd"><?= number_format($bangunanTotal['pendidikan']) ?></div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md">
+    <div class="card pub-kpi border-0 shadow-sm h-100"><div class="card-body">
+      <div class="text-muted small">Fasilitas Kesehatan</div>
+      <div class="fs-4 fw-bold" style="color:#fd7e14"><?= number_format($bangunanTotal['kesehatan']) ?></div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md">
     <div class="card pub-kpi border-0 shadow-sm h-100"><div class="card-body">
       <div class="text-muted small">Bangunan Kosong</div>
       <div class="fs-4 fw-bold text-secondary"><?= number_format($bangunanTotal['kosong']) ?></div>
-    </div></div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card pub-kpi border-0 shadow-sm h-100"><div class="card-body">
-      <div class="text-muted small">Khusus Usaha</div>
-      <div class="fs-4 fw-bold" style="color:#fd7e14"><?= number_format($bangunanTotal['usaha']) ?></div>
-    </div></div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card pub-kpi border-0 shadow-sm h-100"><div class="card-body">
-      <div class="text-muted small">Bukan Tinggal, Non Usaha</div>
-      <div class="fs-4 fw-bold text-muted"><?= number_format($bangunanTotal['non_usaha']) ?></div>
     </div></div>
   </div>
 </div>
@@ -219,19 +227,28 @@ require __DIR__ . '/../includes/partials_header.php';
 <div class="row g-3 mb-2">
   <div class="col-md-4">
     <div class="card border-0 shadow-sm h-100"><div class="card-body">
-      <h6 class="text-muted">Jumlah Keluarga per RT</h6>
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <h6 class="text-muted mb-0">Jumlah Keluarga per RT</h6>
+        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="unduhGrafik('chartKeluargaRt')" title="Unduh grafik sebagai gambar"><i class="bi bi-download"></i></button>
+      </div>
       <canvas id="chartKeluargaRt" height="220"></canvas>
     </div></div>
   </div>
   <div class="col-md-4">
     <div class="card border-0 shadow-sm h-100"><div class="card-body">
-      <h6 class="text-muted">% Keluarga Pernah Terima Bantuan per RT</h6>
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <h6 class="text-muted mb-0">% Keluarga Pernah Terima Bantuan per RT</h6>
+        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="unduhGrafik('chartBantuanRt')" title="Unduh grafik sebagai gambar"><i class="bi bi-download"></i></button>
+      </div>
       <canvas id="chartBantuanRt" height="220"></canvas>
     </div></div>
   </div>
   <div class="col-md-4">
     <div class="card border-0 shadow-sm h-100"><div class="card-body">
-      <h6 class="text-muted">% Keluarga dengan UMKM per RT</h6>
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <h6 class="text-muted mb-0">% Keluarga dengan UMKM per RT</h6>
+        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="unduhGrafik('chartUmkmRt')" title="Unduh grafik sebagai gambar"><i class="bi bi-download"></i></button>
+      </div>
       <canvas id="chartUmkmRt" height="220"></canvas>
     </div></div>
   </div>
@@ -240,7 +257,10 @@ require __DIR__ . '/../includes/partials_header.php';
 <div class="row g-3 mb-4">
   <div class="col-md-12">
     <div class="card border-0 shadow-sm h-100"><div class="card-body">
-      <h6 class="text-muted">Data Bangunan per RT</h6>
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <h6 class="text-muted mb-0">Data Bangunan per RT</h6>
+        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="unduhGrafik('chartBangunanRt')" title="Unduh grafik sebagai gambar"><i class="bi bi-download"></i></button>
+      </div>
       <canvas id="chartBangunanRt" height="200"></canvas>
     </div></div>
   </div>
@@ -251,13 +271,19 @@ require __DIR__ . '/../includes/partials_header.php';
 <div class="row g-3 mb-2">
   <div class="col-md-7">
     <div class="card border-0 shadow-sm h-100"><div class="card-body">
-      <h6 class="text-muted">Kelompok Usia Kepala Keluarga menurut Jenis Kelamin</h6>
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <h6 class="text-muted mb-0">Kelompok Usia Kepala Keluarga menurut Jenis Kelamin</h6>
+        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="unduhGrafik('chartUsiaKk')" title="Unduh grafik sebagai gambar"><i class="bi bi-download"></i></button>
+      </div>
       <canvas id="chartUsiaKk" height="260"></canvas>
     </div></div>
   </div>
   <div class="col-md-5">
     <div class="card border-0 shadow-sm h-100"><div class="card-body">
-      <h6 class="text-muted">Status Perkawinan</h6>
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <h6 class="text-muted mb-0">Status Perkawinan</h6>
+        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="unduhGrafik('chartKawin')" title="Unduh grafik sebagai gambar"><i class="bi bi-download"></i></button>
+      </div>
       <canvas id="chartKawin" height="260"></canvas>
     </div></div>
   </div>
@@ -266,13 +292,19 @@ require __DIR__ . '/../includes/partials_header.php';
 <div class="row g-3 mb-2">
   <div class="col-md-6">
     <div class="card border-0 shadow-sm h-100"><div class="card-body">
-      <h6 class="text-muted">Tingkat Pendidikan Terakhir</h6>
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <h6 class="text-muted mb-0">Tingkat Pendidikan Terakhir</h6>
+        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="unduhGrafik('chartPendidikan')" title="Unduh grafik sebagai gambar"><i class="bi bi-download"></i></button>
+      </div>
       <canvas id="chartPendidikan" height="240"></canvas>
     </div></div>
   </div>
   <div class="col-md-6">
     <div class="card border-0 shadow-sm h-100"><div class="card-body">
-      <h6 class="text-muted">Status Pekerjaan</h6>
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <h6 class="text-muted mb-0">Status Pekerjaan</h6>
+        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="unduhGrafik('chartPekerjaan')" title="Unduh grafik sebagai gambar"><i class="bi bi-download"></i></button>
+      </div>
       <canvas id="chartPekerjaan" height="240"></canvas>
     </div></div>
   </div>
@@ -281,7 +313,10 @@ require __DIR__ . '/../includes/partials_header.php';
 <div class="row g-3 mb-4">
   <div class="col-md-6">
     <div class="card border-0 shadow-sm h-100"><div class="card-body">
-      <h6 class="text-muted">Komposisi Agama</h6>
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <h6 class="text-muted mb-0">Komposisi Agama</h6>
+        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="unduhGrafik('chartAgama')" title="Unduh grafik sebagai gambar"><i class="bi bi-download"></i></button>
+      </div>
       <canvas id="chartAgama" height="220"></canvas>
     </div></div>
   </div>
@@ -300,6 +335,19 @@ const TEAL = '#14867a';
 const TEAL_DARK = '#0f5e56';
 const ORANGE = '#fd7e14';
 const PALETTE = ['#14867a','#0f5e56','#5aa89c','#fd7e14','#dc3545','#6c757d','#ffc107','#20c997','#6610f2','#e83e8c'];
+
+// ---------- Unduh grafik sebagai gambar PNG ----------
+const chartInstances = {};
+function unduhGrafik(canvasId) {
+  const chart = chartInstances[canvasId];
+  if (!chart) return;
+  const link = document.createElement('a');
+  link.href = chart.toBase64Image('image/png', 1);
+  link.download = canvasId.replace(/^chart/, 'grafik_') + '.png';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
 
 // ---------- Peta Tematik (choropleth berbasis batas wilayah RT resmi) ----------
 const rtStats = {};
@@ -384,38 +432,39 @@ legend.addTo(map);
 
 // ---------- Chart per RT ----------
 const chartRtData = <?= json_encode($mapPoints) ?>;
-new Chart(document.getElementById('chartKeluargaRt'), {
+chartInstances['chartKeluargaRt'] = new Chart(document.getElementById('chartKeluargaRt'), {
   type: 'bar',
   data: { labels: chartRtData.map(p => 'RT ' + p.rt), datasets: [{ label: 'Jumlah Keluarga', data: chartRtData.map(p => p.keluarga), backgroundColor: TEAL }] },
   options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
 });
-new Chart(document.getElementById('chartBantuanRt'), {
+chartInstances['chartBantuanRt'] = new Chart(document.getElementById('chartBantuanRt'), {
   type: 'bar',
   data: { labels: chartRtData.map(p => 'RT ' + p.rt), datasets: [{ label: '% Bantuan', data: chartRtData.map(p => p.persen_bantuan), backgroundColor: TEAL_DARK }] },
   options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => v + '%' } } } },
 });
-new Chart(document.getElementById('chartUmkmRt'), {
+chartInstances['chartUmkmRt'] = new Chart(document.getElementById('chartUmkmRt'), {
   type: 'bar',
   data: { labels: chartRtData.map(p => 'RT ' + p.rt), datasets: [{ label: '% UMKM', data: chartRtData.map(p => p.persen_umkm), backgroundColor: ORANGE }] },
   options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => v + '%' } } } },
 });
 
-new Chart(document.getElementById('chartBangunanRt'), {
+chartInstances['chartBangunanRt'] = new Chart(document.getElementById('chartBangunanRt'), {
   type: 'bar',
   data: {
     labels: chartRtData.map(p => 'RT ' + p.rt),
     datasets: [
-      { label: 'Tinggal Terisi', data: chartRtData.map(p => p.bangunan_terisi), backgroundColor: TEAL },
+      { label: 'Tempat Tinggal', data: chartRtData.map(p => p.bangunan_tinggal), backgroundColor: TEAL },
+      { label: 'Rumah Ibadah', data: chartRtData.map(p => p.bangunan_ibadah), backgroundColor: '#6610f2' },
+      { label: 'Fasilitas Pendidikan', data: chartRtData.map(p => p.bangunan_pendidikan), backgroundColor: '#0d6efd' },
+      { label: 'Fasilitas Kesehatan', data: chartRtData.map(p => p.bangunan_kesehatan), backgroundColor: ORANGE },
       { label: 'Bangunan Kosong', data: chartRtData.map(p => p.bangunan_kosong), backgroundColor: '#adb5bd' },
-      { label: 'Khusus Usaha', data: chartRtData.map(p => p.bangunan_usaha), backgroundColor: ORANGE },
-      { label: 'Bukan Tinggal, Non Usaha', data: chartRtData.map(p => p.bangunan_non_usaha), backgroundColor: '#6610f2' },
     ],
   },
   options: { scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } },
 });
 
 // ---------- Chart: Kelompok Usia Kepala Keluarga ----------
-new Chart(document.getElementById('chartUsiaKk'), {
+chartInstances['chartUsiaKk'] = new Chart(document.getElementById('chartUsiaKk'), {
   type: 'bar',
   data: {
     labels: <?= json_encode($ageLabels) ?>,
@@ -429,14 +478,14 @@ new Chart(document.getElementById('chartUsiaKk'), {
 
 // ---------- Chart generik donut/bar ----------
 function buatDonut(id, labelData) {
-  new Chart(document.getElementById(id), {
+  chartInstances[id] = new Chart(document.getElementById(id), {
     type: 'doughnut',
     data: { labels: Object.keys(labelData), datasets: [{ data: Object.values(labelData), backgroundColor: PALETTE }] },
     options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } } },
   });
 }
 function buatBarH(id, labelData, color) {
-  new Chart(document.getElementById(id), {
+  chartInstances[id] = new Chart(document.getElementById(id), {
     type: 'bar',
     data: { labels: Object.keys(labelData), datasets: [{ data: Object.values(labelData), backgroundColor: color || TEAL }] },
     options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } },

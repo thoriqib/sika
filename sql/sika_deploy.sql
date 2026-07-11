@@ -2,8 +2,8 @@
 -- SIKA (Sistem Informasi Keluarga) - Dump Database Deploy
 -- Kelurahan Mudung Laut, Kecamatan Pelayangan, Kota Jambi
 -- File TUNGGAL untuk deploy ke server baru — sudah mencakup seluruh
--- pembaruan struktur s.d. saat ini (keluarga, bantuan/UMKM/disabilitas,
--- status keberadaan, data bangunan per RT, login persisten).
+-- pembaruan struktur s.d. saat ini (bantuan bulan/tahun, UMKM per
+-- gender, 5 kategori bangunan, login persisten).
 -- Cara pakai:
 -- 1. Buka phpMyAdmin (http://localhost/phpmyadmin)
 -- 2. Buat database baru bernama: pemutakhiran_keluarga
@@ -31,10 +31,11 @@ CREATE TABLE rt (
   id INT AUTO_INCREMENT PRIMARY KEY,
   nomor_rt VARCHAR(10) NOT NULL UNIQUE,
   keterangan VARCHAR(100) NULL,
-  jml_bangunan_tinggal_terisi INT NOT NULL DEFAULT 0,      -- Jumlah Bangunan Tempat Tinggal Terisi
-  jml_bangunan_tinggal_kosong INT NOT NULL DEFAULT 0,      -- Jumlah Bangunan Tempat Tinggal Kosong
-  jml_bangunan_khusus_usaha INT NOT NULL DEFAULT 0,        -- Jumlah Bangunan Khusus Usaha
-  jml_bangunan_bukan_tinggal_non_usaha INT NOT NULL DEFAULT 0 -- Jumlah Bangunan Bukan Tempat Tinggal Non Usaha
+  jml_bangunan_tinggal INT NOT NULL DEFAULT 0,              -- Jumlah Bangunan Tempat Tinggal
+  jml_bangunan_rumah_ibadah INT NOT NULL DEFAULT 0,         -- Jumlah Bangunan Rumah Ibadah
+  jml_bangunan_fasilitas_pendidikan INT NOT NULL DEFAULT 0, -- Jumlah Bangunan Fasilitas Pendidikan
+  jml_bangunan_fasilitas_kesehatan INT NOT NULL DEFAULT 0,  -- Jumlah Bangunan Fasilitas Kesehatan
+  jml_bangunan_kosong INT NOT NULL DEFAULT 0                -- Jumlah Bangunan Kosong
 ) ENGINE=InnoDB;
 
 -- =========================================================
@@ -83,9 +84,12 @@ CREATE TABLE keluarga (
 
   -- Pertanyaan tambahan
   pernah_bantuan ENUM('Ya','Tidak') NOT NULL DEFAULT 'Tidak', -- pernah menerima bantuan pemerintah?
-  deskripsi_bantuan VARCHAR(255) NULL,                        -- diisi jika pernah_bantuan = 'Ya'
+  jenis_bantuan VARCHAR(255) NULL,                            -- daftar jenis bantuan terpilih, dipisah koma (PKH,BPNT,dst)
+  tanggal_terakhir_bantuan DATE NULL,                          -- kapan terakhir menerima bantuan (bulan+tahun saja; disimpan tanggal 01, diisi jika pernah_bantuan = 'Ya')
+  deskripsi_bantuan VARCHAR(255) NULL,                        -- diisi jika jenis_bantuan memuat 'Lainnya'
   ada_umkm ENUM('Ya','Tidak') NOT NULL DEFAULT 'Tidak',       -- ada anggota keluarga yang memiliki UMKM?
-  jumlah_anggota_umkm INT NULL,                               -- diisi jika ada_umkm = 'Ya'
+  jumlah_anggota_umkm_lk INT NULL,                            -- diisi jika ada_umkm = 'Ya'
+  jumlah_anggota_umkm_pr INT NULL,                            -- diisi jika ada_umkm = 'Ya'
   ada_disabilitas ENUM('Ya','Tidak') NOT NULL DEFAULT 'Tidak', -- ada anggota keluarga penyandang disabilitas?
   jumlah_disabilitas INT NULL,                                -- diisi jika ada_disabilitas = 'Ya'
   jenis_disabilitas VARCHAR(255) NULL,                        -- diisi jika ada_disabilitas = 'Ya'
